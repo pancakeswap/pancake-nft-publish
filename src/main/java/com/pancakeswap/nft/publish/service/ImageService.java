@@ -13,6 +13,7 @@ import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import com.amazonaws.services.s3.transfer.Upload;
 import com.pancakeswap.nft.publish.exception.ImageLoadException;
+import com.pancakeswap.nft.publish.model.dto.TokenDataDto;
 import lombok.extern.slf4j.Slf4j;
 import org.imgscalr.Scalr;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,8 +29,10 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.AbstractMap;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import static com.pancakeswap.nft.publish.util.FileNameUtil.formattedTokenName;
 import static com.pancakeswap.nft.publish.util.UrlUtil.getIpfsFormattedUrl;
 
 @Service
@@ -86,24 +89,26 @@ public class ImageService {
         });
     }
 
-    public CompletableFuture<?> s3SyncUploadTokenImages(String imageUrl, String contract, String formattedTokenName) {
+    public CompletableFuture<?> s3SyncUploadTokenImages(String imageUrl, String contract, TokenDataDto tokenData, Set<String> tokenIdsFailed) {
         return CompletableFuture.runAsync(() -> {
-            if (!imageExist(contract, formattedTokenName)) {
+            String tokenName = formattedTokenName(tokenData.getName());
+            if (!imageExist(contract, tokenName)) {
                 int attempts = 10;
                 int i = 0;
                 boolean done = false;
                 while (i < attempts && !done) {
                     try {
                         AbstractMap.SimpleEntry<BufferedImage, BufferedImage> images = getImages(imageUrl);
-                        uploadSync(images.getKey(), contract, String.format("%s.png", formattedTokenName));
-                        uploadSync(images.getValue(), contract, String.format("%s-1000.png", formattedTokenName));
+                        uploadSync(images.getKey(), contract, String.format("%s.png", tokenName));
+                        uploadSync(images.getValue(), contract, String.format("%s-1000.png", tokenName));
                         done = true;
                     } catch (IOException ignore) {
                     }
                     i++;
                 }
                 if (attempts == i) {
-                    log.error("failed to upload image. url: {}, formattedTokenName: {}", imageUrl, formattedTokenName);
+                    tokenIdsFailed.add(tokenData.getTokenId());
+                    log.error("failed to upload image. url: {}, formattedTokenName: {}", imageUrl, tokenName);
                 }
             }
         });
@@ -175,7 +180,7 @@ public class ImageService {
         s3client.putObject(putObject);
     }
 
-    public boolean imageExist(String contract, String formattedTokenName) {
+    private boolean imageExist(String contract, String formattedTokenName) {
         String originalImage = String.format("%s/%s/%s.png", "mainnet", contract, formattedTokenName);
         String resizedImage = String.format("%s/%s/%s-1000.png", "mainnet", contract, formattedTokenName);
 

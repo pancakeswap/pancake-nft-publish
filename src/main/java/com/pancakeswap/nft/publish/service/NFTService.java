@@ -1,6 +1,5 @@
 package com.pancakeswap.nft.publish.service;
 
-import com.pancakeswap.nft.publish.exception.HttpException;
 import com.pancakeswap.nft.publish.model.dto.TokenDataDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,8 +13,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
-import static com.pancakeswap.nft.publish.util.FileNameUtil.formattedTokenName;
 import static com.pancakeswap.nft.publish.util.GsonUtil.parseBody;
 import static com.pancakeswap.nft.publish.util.UrlUtil.getIpfsFormattedUrl;
 
@@ -38,7 +37,7 @@ public class NFTService {
     private final DBService dbService;
 
     private final List<CompletableFuture<?>> futureRequests = Collections.synchronizedList(new LinkedList<>());
-
+    private final Set<String> tokenIdsFailed = Collections.synchronizedSet(new HashSet<>());
 
     public NFTService(BlockChainService blockChainService, TokenDataService tokenDataService, ImageService imageService, DBService dbService) {
         this.blockChainService = blockChainService;
@@ -65,13 +64,19 @@ public class NFTService {
                 loadAndStoreTokenDataAsync(tokenId.toString(), collectionId, url, new AtomicInteger(0));
                 futureRequests.removeIf(CompletableFuture::isDone);
             } catch (Exception e) {
+                if (tokenId != null) {
+                    tokenIdsFailed.add(tokenId.toString());
+                }
                 log.error("failed to store token index: {}, id: {}, url: {}, collectionId: {}", i, tokenId, url, collectionId, e);
             }
         }
 
         waitFutureRequestFinished();
-
         log.info("fetching tokens finished");
+
+        if (!tokenIdsFailed.isEmpty()) {
+            log.error("List of failed tokens IDs: {}", tokenIdsFailed.stream().sorted().collect(Collectors.joining(",")));
+        }
     }
 
     public void relistNft(List<BigInteger> tokenIds, String collectionId) {
@@ -119,8 +124,8 @@ public class NFTService {
                         if (attemptValue < 10) {
                             loadAndStoreTokenDataAsync(tokenId, collectionId, url, attempt);
                         } else {
+                            tokenIdsFailed.add(tokenId);
                             log.error("Can not fetch token data from: {}. Token id: {}. Attempt: {}. Error message: {}", url, tokenId, attemptValue, e.getMessage());
-                            throw new HttpException("Can not fetch token data");
                         }
                     } else {
                         TokenDataDto tokenData = parseBody(res.body());
@@ -149,7 +154,7 @@ public class NFTService {
             imageUrl = tokenData.getImage();
         }
 
-        futureRequests.add(imageService.s3SyncUploadTokenImages(imageUrl, Keys.toChecksumAddress(contract), formattedTokenName(tokenData.getName())));
+        futureRequests.add(imageService.s3SyncUploadTokenImages(imageUrl, Keys.toChecksumAddress(contract), tokenData, tokenIdsFailed));
         futureRequests.removeIf(CompletableFuture::isDone);
     }
 }
