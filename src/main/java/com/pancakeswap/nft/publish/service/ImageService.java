@@ -61,17 +61,29 @@ public class ImageService {
 
     }
 
-    public Upload uploadAvatarImage(String imageUrl, String contract) throws IOException {
-        BufferedImage original = ImageIO.read(new URL(imageUrl));
-        return uploadAsync(original, contract, "avatar.png");
+    public CompletableFuture<?> uploadAvatarImage(String imageUrl, String contract) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                BufferedImage original = ImageIO.read(new URL(imageUrl));
+
+                uploadSync(original, contract, "avatar.png");
+            } catch (IOException ignore) {
+                log.error("failed to upload image avatar. url: {}", imageUrl);
+            }
+        });
     }
 
-    public List<Upload> uploadBannerImage(String imageUrl, String contract) throws IOException {
-        BufferedImage original = ImageIO.read(new URL(imageUrl));
-        return List.of(
-                uploadAsync(original, contract, "banner-lg.png"),
-                uploadAsync(original, contract, "banner-sm.png")
-        );
+    public CompletableFuture<?> uploadBannerImage(String imageUrl, String contract) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                BufferedImage original = ImageIO.read(new URL(imageUrl));
+
+                uploadSync(original, contract, "banner-lg.png");
+                uploadSync(original, contract, "banner-sm.png");
+            } catch (IOException ignore) {
+                log.error("failed to upload image banner. url: {}", imageUrl);
+            }
+        });
     }
 
     public CompletableFuture<?> s3SyncUploadTokenImages(String imageUrl, String contract, String formattedTokenName) {

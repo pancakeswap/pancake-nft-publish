@@ -1,6 +1,5 @@
 package com.pancakeswap.nft.publish.service;
 
-import com.amazonaws.services.s3.transfer.Upload;
 import com.pancakeswap.nft.publish.exception.HttpException;
 import com.pancakeswap.nft.publish.model.dto.TokenDataDto;
 import lombok.extern.slf4j.Slf4j;
@@ -8,7 +7,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Keys;
 
-import java.io.IOException;
 import java.math.BigInteger;
 import java.net.http.HttpResponse;
 import java.util.*;
@@ -39,7 +37,6 @@ public class NFTService {
     private final ImageService imageService;
     private final DBService dbService;
 
-    private final Set<Upload> images = Collections.synchronizedSet(new HashSet<>());
     private final List<CompletableFuture<?>> futureRequests = Collections.synchronizedList(new LinkedList<>());
 
 
@@ -53,7 +50,7 @@ public class NFTService {
     public void listNFT() throws ExecutionException, InterruptedException {
         log.info("fetching tokens started");
 
-//        storeAvatarAndBanner();
+        storeAvatarAndBanner();
 
         BigInteger totalSupply = blockChainService.getTotalSupply();
         String collectionId = dbService.storeCollection(totalSupply.intValue()).getId();
@@ -73,7 +70,6 @@ public class NFTService {
         }
 
         waitFutureRequestFinished();
-        waitImagesLoadFinished();
 
         log.info("fetching tokens finished");
     }
@@ -110,23 +106,9 @@ public class NFTService {
         }
     }
 
-    private void waitImagesLoadFinished() {
-        images.forEach(u -> {
-            try {
-                u.waitForCompletion();
-            } catch (Exception e) {
-                log.error("failed upload image description: {}}", u.getDescription(), e);
-            }
-        });
-    }
-
     private void storeAvatarAndBanner() {
-        try {
-            images.add(imageService.uploadAvatarImage(avatarUrl, Keys.toChecksumAddress(contract)));
-            images.addAll(imageService.uploadBannerImage(bannerUrl, Keys.toChecksumAddress(contract)));
-        } catch (IOException e) {
-            log.error("failed upload image avatar/banner. avatarUrl: {}, bannerUrl: {}", avatarUrl, bannerUrl, e);
-        }
+        futureRequests.add(imageService.uploadBannerImage(bannerUrl, Keys.toChecksumAddress(contract)));
+        futureRequests.add(imageService.uploadAvatarImage(avatarUrl, Keys.toChecksumAddress(contract)));
     }
 
     private void loadAndStoreTokenDataAsync(String tokenId, String collectionId, String url, AtomicInteger attempt) {
