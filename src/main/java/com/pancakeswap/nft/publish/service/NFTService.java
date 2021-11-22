@@ -79,7 +79,8 @@ public class NFTService {
         }
     }
 
-    public void relistNft(List<BigInteger> tokenIds, String collectionId) {
+    public void relistNft(List<BigInteger> tokenIds) {
+        String collectionId = dbService.getCollection().getId();
         tokenIds.forEach(tokenId -> {
             String url = null;
             try {
