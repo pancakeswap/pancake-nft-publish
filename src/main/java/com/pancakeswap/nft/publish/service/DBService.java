@@ -41,8 +41,12 @@ public class DBService {
         this.metadataRepository = metadataRepository;
     }
 
+    public Collection getCollection() {
+        return collectionRepository.findByAddress(contract.toLowerCase(Locale.ROOT));
+    }
+
     public Collection storeCollection(Integer totalSupply) {
-        Collection collection = collectionRepository.findByAddress(contract.toLowerCase(Locale.ROOT));
+        Collection collection = getCollection();
         if (collection != null) {
             return collection;
         }
@@ -109,13 +113,20 @@ public class DBService {
 
     private List<ObjectId> storeAttributes(String collectionId, List<AttributeDto> attributes) {
         synchronized (attributesMapCache) {
+
+            List<ObjectId> existed = new ArrayList<>();
+
             List<AttributeDto> toStore = attributes.stream().filter(item -> {
-                boolean inCache = attributesMapCache.get(String.format("%s-%s-%s", collectionId, item.getTraitType(), item.getValue())) != null;
-                if (inCache) {
+                String id = attributesMapCache.get(String.format("%s-%s-%s", collectionId, item.getTraitType(), item.getValue()));
+                if (id != null) {
+                    existed.add(new ObjectId(id));
                     return false;
                 } else {
                     Optional<Attribute> attr = attributeRepository.findByParentCollectionAndTraitTypeAndValue(new ObjectId(collectionId), item.getTraitType(), item.getValue());
-                    attr.ifPresent((a) -> attributesMapCache.put(String.format("%s-%s-%s", collectionId, a.getTraitType(), a.getValue()), a.getId()));
+                    attr.ifPresent((a) -> {
+                        attributesMapCache.put(String.format("%s-%s-%s", collectionId, a.getTraitType(), a.getValue()), a.getId());
+                        existed.add(new ObjectId(a.getId()));
+                    });
 
                     return attr.isEmpty();
                 }
@@ -133,10 +144,13 @@ public class DBService {
                 return attribute;
             }).collect(Collectors.toList());
 
-            List<Attribute> stored = attributeRepository.saveAll(entities);
-            stored.forEach(a -> attributesMapCache.put(String.format("%s-%s-%s", collectionId, a.getTraitType(), a.getValue()), a.getId()));
+            if (entities.size() > 0) {
+                List<Attribute> stored = attributeRepository.saveAll(entities);
+                stored.forEach(a -> attributesMapCache.put(String.format("%s-%s-%s", collectionId, a.getTraitType(), a.getValue()), a.getId()));
+                existed.addAll(stored.stream().map(a -> new ObjectId(a.getId())).collect(Collectors.toList()));
+            }
 
-            return stored.stream().map(a -> new ObjectId(a.getId())).collect(Collectors.toList());
+            return existed;
         }
     }
 
