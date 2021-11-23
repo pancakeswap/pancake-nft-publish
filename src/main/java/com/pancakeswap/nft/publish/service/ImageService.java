@@ -89,7 +89,7 @@ public class ImageService {
         });
     }
 
-    public CompletableFuture<?> s3SyncUploadTokenImages(String imageUrl, String contract, TokenDataDto tokenData, Set<String> tokenIdsFailed) {
+    public CompletableFuture<?> s3UploadTokenImagesAsync(String imageUrl, String contract, TokenDataDto tokenData, Set<String> tokenIdsFailed) {
         return CompletableFuture.runAsync(() -> {
             String tokenName = formattedTokenName(tokenData.getName());
             if (!imageExist(contract, tokenName)) {
