@@ -10,6 +10,7 @@ import java.math.BigInteger;
 import java.net.http.HttpResponse;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -36,7 +37,7 @@ public class NFTService {
     private final ImageService imageService;
     private final DBService dbService;
 
-    private final List<CompletableFuture<?>> futureRequests = Collections.synchronizedList(new LinkedList<>());
+    private final Deque<CompletableFuture<?>> futureRequests = new ConcurrentLinkedDeque<>();
     private final Set<String> tokenIdsFailed = Collections.synchronizedSet(new HashSet<>());
 
     public NFTService(BlockChainService blockChainService, TokenDataService tokenDataService, ImageService imageService, DBService dbService) {
@@ -73,80 +74,104 @@ public class NFTService {
 
         waitFutureRequestFinished();
         log.info("fetching tokens finished");
-
-        if (!tokenIdsFailed.isEmpty()) {
-            log.error("List of failed tokens IDs: {}", tokenIdsFailed.stream().sorted().collect(Collectors.joining(",")));
-        }
     }
 
     public void relistNft(List<BigInteger> tokenIds) {
+        log.info("fetching tokens started");
+
         String collectionId = dbService.getCollection().getId();
         tokenIds.forEach(tokenId -> {
             String url = null;
             try {
                 url = getIpfsFormattedUrl(blockChainService.getTokenURI(tokenId));
                 loadAndStoreTokenDataAsync(tokenId.toString(), collectionId, url, new AtomicInteger(0));
-                futureRequests.removeIf(CompletableFuture::isDone);
             } catch (Exception e) {
                 log.error("failed to store token id: {}, url: {}, collectionId: {}", tokenId, url, collectionId, e);
             }
         });
         waitFutureRequestFinished();
+        log.info("fetching tokens finished");
     }
 
     private void waitFutureRequestFinished() {
         boolean allAttemptsFinished = false;
         while (!allAttemptsFinished) {
-            for(int i = 0; i < futureRequests.size(); i++) {
-                try {
-                    CompletableFuture<?> item = futureRequests.get(i);
-                    futureRequests.remove(item);
-                    item.get(2, TimeUnit.SECONDS);
-                } catch (Exception e) {
-                    log.trace("Failed blocked waiting", e);
-                }
+            try {
+                CompletableFuture<?> item = futureRequests.pop();
+                item.get(2, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                log.trace("Failed blocked waiting", e);
             }
 
             futureRequests.removeIf(CompletableFuture::isDone);
             allAttemptsFinished = futureRequests.size() == 0;
         }
+        if (!tokenIdsFailed.isEmpty()) {
+            log.error("List of failed tokens IDs: {}", tokenIdsFailed.stream().sorted().collect(Collectors.joining(",")));
+        }
     }
 
     private void storeAvatarAndBanner() {
-        futureRequests.add(imageService.uploadBannerImage(bannerUrl, Keys.toChecksumAddress(contract)));
-        futureRequests.add(imageService.uploadAvatarImage(avatarUrl, Keys.toChecksumAddress(contract)));
+        if (!avatarUrl.isEmpty()) {
+            futureRequests.offerLast(imageService.uploadAvatarImage(avatarUrl, Keys.toChecksumAddress(contract)));
+        } else {
+            log.info("avatar url is empty");
+        }
+        if (!bannerUrl.isEmpty()) {
+            futureRequests.offerLast(imageService.uploadBannerImage(bannerUrl, Keys.toChecksumAddress(contract)));
+        } else {
+            log.info("banner url is empty");
+        }
     }
 
     private void loadAndStoreTokenDataAsync(String tokenId, String collectionId, String url, AtomicInteger attempt) {
         CompletableFuture<HttpResponse<String>> resp = tokenDataService.callAsync(url)
                 .whenComplete((res, e) -> {
                     if (e != null) {
-                        int attemptValue = attempt.incrementAndGet();
-                        if (attemptValue < 10) {
-                            loadAndStoreTokenDataAsync(tokenId, collectionId, url, attempt);
-                        } else {
-                            tokenIdsFailed.add(tokenId);
-                            log.error("Can not fetch token data from: {}. Token id: {}. Attempt: {}. Error message: {}", url, tokenId, attemptValue, e.getMessage());
-                        }
+                        loadAndStoreTokenDataAsyncNextAttempt(tokenId, collectionId, url, attempt, e.getMessage());
                     } else {
-                        TokenDataDto tokenData = parseBody(res.body());
-                        tokenData.setTokenId(tokenId);
-                        if (isModifiedTokenName) {
-                            tokenData.setName(String.format("%s %s", tokenData.getName(), tokenId));
+                        if (res.statusCode() != 200) {
+                            loadAndStoreTokenDataAsyncNextAttempt(tokenId, collectionId, url, attempt, "Response code: " + res.statusCode());
+                        } else {
+                            try {
+                                TokenDataDto tokenData = parseBody(res.body());
+                                tokenData.setTokenId(tokenId);
+                                if (isModifiedTokenName) {
+                                    tokenData.setName(String.format("%s %s", tokenData.getName(), tokenId));
+                                }
+                                storeTokenImage(tokenData);
+                                storeTokenData(collectionId, tokenData);
+                            } catch (Exception ex) {
+                                tokenIdsFailed.add(tokenId);
+                                log.error("Can parse and store token data from: {}. Token id: {}. Error message: {}", url, tokenId, ex.getMessage());
+                            }
                         }
-                        storeTokenImage(tokenData);
-                        storeTokenData(collectionId, tokenData);
                     }
                 });
 
-        futureRequests.add(resp);
-        futureRequests.removeIf(CompletableFuture::isDone);
+        futureRequests.offerLast(resp);
+    }
+
+    private void loadAndStoreTokenDataAsyncNextAttempt(String tokenId, String collectionId, String url, AtomicInteger attempt, String failReason) {
+        int attemptValue = attempt.incrementAndGet();
+        if (attemptValue < 10) {
+            loadAndStoreTokenDataAsync(tokenId, collectionId, url, attempt);
+        } else {
+            tokenIdsFailed.add(tokenId);
+            log.error("Can not fetch token data from: {}. Token id: {}. Attempt: {}. Error message: {}", url, tokenId, attemptValue, failReason);
+        }
     }
 
     private void storeTokenData(String collectionId, TokenDataDto tokenData) {
-        futureRequests.add(CompletableFuture.runAsync(() -> {
-            dbService.storeToken(collectionId, tokenData);
-        }));
+        futureRequests.offerLast(CompletableFuture.runAsync(
+                () -> {
+                    try {
+                        dbService.storeToken(collectionId, tokenData);
+                    } catch (Exception e) {
+                        tokenIdsFailed.add(tokenData.getTokenId());
+                        log.error("Can not store token data. Token id: {}, collectionId: {}, Error message: {}", tokenData.getTokenId(), collectionId, e.getMessage());
+                    }
+                }));
     }
 
     private void storeTokenImage(TokenDataDto tokenData) {
@@ -155,7 +180,6 @@ public class NFTService {
             imageUrl = tokenData.getImage();
         }
 
-        futureRequests.add(imageService.s3SyncUploadTokenImages(imageUrl, Keys.toChecksumAddress(contract), tokenData, tokenIdsFailed));
-        futureRequests.removeIf(CompletableFuture::isDone);
+        futureRequests.offerLast(imageService.s3UploadTokenImagesAsync(imageUrl, Keys.toChecksumAddress(contract), tokenData, tokenIdsFailed));
     }
 }
