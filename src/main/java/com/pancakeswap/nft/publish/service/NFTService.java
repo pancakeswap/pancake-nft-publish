@@ -2,9 +2,9 @@ package com.pancakeswap.nft.publish.service;
 
 import com.pancakeswap.nft.publish.model.dto.TokenDataDto;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.web3j.crypto.Keys;
 
 import java.math.BigInteger;
 import java.net.http.HttpResponse;
@@ -23,8 +23,6 @@ import static com.pancakeswap.nft.publish.util.UrlUtil.getIpfsFormattedUrl;
 @Slf4j
 public class NFTService {
 
-    @Value("${nft.collection.address}")
-    private String contract;
     @Value("${nft.connection.avatar}")
     private String avatarUrl;
     @Value("${nft.connection.banner}")
@@ -113,12 +111,12 @@ public class NFTService {
 
     private void storeAvatarAndBanner() {
         if (!avatarUrl.isEmpty()) {
-            futureRequests.offerLast(imageService.uploadAvatarImage(avatarUrl, Keys.toChecksumAddress(contract)));
+            futureRequests.offerLast(imageService.uploadAvatarImage(avatarUrl));
         } else {
             log.info("avatar url is empty");
         }
         if (!bannerUrl.isEmpty()) {
-            futureRequests.offerLast(imageService.uploadBannerImage(bannerUrl, Keys.toChecksumAddress(contract)));
+            futureRequests.offerLast(imageService.uploadBannerImage(bannerUrl));
         } else {
             log.info("banner url is empty");
         }
@@ -174,12 +172,14 @@ public class NFTService {
                 }));
     }
 
+    //If token 'imagePng' exist we assume that 'image' contain gif
     private void storeTokenImage(TokenDataDto tokenData) {
-        String imageUrl = tokenData.getImagePng();
-        if (imageUrl == null || !imageUrl.endsWith(".png")) {
-            imageUrl = tokenData.getImage();
+        if (Strings.isNotBlank(tokenData.getImagePng())) {
+            futureRequests.offerLast(imageService.s3UploadTokenImagesAsync(tokenData.getImagePng(), tokenData, tokenIdsFailed,TokenMetadata.PNG));
+            futureRequests.offerLast(imageService.s3UploadTokenImagesAsync(tokenData.getImage(), tokenData, tokenIdsFailed, TokenMetadata.GIF));
+            tokenData.setGif(true);
+        } else {
+            futureRequests.offerLast(imageService.s3UploadTokenImagesAsync(tokenData.getImage(), tokenData, tokenIdsFailed, TokenMetadata.PNG));
         }
-
-        futureRequests.offerLast(imageService.s3UploadTokenImagesAsync(imageUrl, Keys.toChecksumAddress(contract), tokenData, tokenIdsFailed));
     }
 }

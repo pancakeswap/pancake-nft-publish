@@ -14,5 +14,9 @@ public class TokenDataDto {
     private String image;
     private String imagePng;
 
+    private Boolean mp4;
+    private Boolean webm;
+    private Boolean gif;
+
     private List<AttributeDto> attributes;
 }

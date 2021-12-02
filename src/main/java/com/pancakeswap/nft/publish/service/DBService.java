@@ -66,14 +66,6 @@ public class DBService {
         return collectionRepository.save(collection);
     }
 
-    public Token getExistedExist(String collectionId, String tokenId) {
-        return tokenRepository.findByParentCollectionAndTokenId(new ObjectId(collectionId), tokenId);
-    }
-
-    public String getTokenName(String metadataId) {
-        return metadataRepository.findById(metadataId).get().getName();
-    }
-
     @Transactional
     public void storeToken(String collectionId, TokenDataDto tokenDataDto) {
         List<ObjectId> attributes = storeAttributes(collectionId, tokenDataDto.getAttributes());
@@ -89,6 +81,16 @@ public class DBService {
         if (token.getMetadata() == null) {
             Metadata metadata = storeMetadata(tokenDataDto, collectionId);
             token.setMetadata(new ObjectId(metadata.getId()));
+        } else {
+            metadataRepository.findById(token.getMetadata().toString()).ifPresent((meta) -> {
+                meta.setName(tokenDataDto.getName());
+                meta.setDescription(tokenDataDto.getDescription());
+                meta.setGif(Boolean.TRUE.equals(tokenDataDto.getGif()));
+                meta.setMp4(Boolean.TRUE.equals(tokenDataDto.getMp4()));
+                meta.setWebm(Boolean.TRUE.equals(tokenDataDto.getWebm()));
+                meta.setUpdatedAt(new Date());
+                metadataRepository.save(meta);
+            });
         }
 
         token.setTokenId(tokenDataDto.getTokenId());
@@ -159,9 +161,9 @@ public class DBService {
         metadata.setParentCollection(new ObjectId(parentId));
         metadata.setName(dto.getName());
         metadata.setDescription(dto.getDescription());
-        metadata.setGif(false);
-        metadata.setMp4(false);
-        metadata.setWebm(false);
+        metadata.setGif(Boolean.TRUE.equals(dto.getGif()));
+        metadata.setMp4(Boolean.TRUE.equals(dto.getMp4()));
+        metadata.setWebm(Boolean.TRUE.equals(dto.getWebm()));
         metadata.setCreatedAt(new Date());
         metadata.setUpdatedAt(new Date());
 
