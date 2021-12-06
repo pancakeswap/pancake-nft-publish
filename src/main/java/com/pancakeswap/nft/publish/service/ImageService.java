@@ -203,7 +203,7 @@ public class ImageService {
     }
 
     private boolean imageExist(String formattedTokenName, TokenMetadata metadata) {
-        String image = String.format("%s/%s/%s/.%s", "mainnet", contract, formattedTokenName, metadata.getType());
+        String image = String.format("%s/%s/%s.%s", "mainnet", contract, formattedTokenName, metadata.getType());
         boolean exist = s3client.doesObjectExist(bucket, image);
         if (metadata == TokenMetadata.PNG) {
             String resizedImage = String.format("%s/%s/%s-1000.%s", "mainnet", contract, formattedTokenName, metadata.getType());
