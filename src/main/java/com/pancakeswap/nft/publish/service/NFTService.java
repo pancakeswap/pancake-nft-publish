@@ -23,12 +23,14 @@ import static com.pancakeswap.nft.publish.util.UrlUtil.getIpfsFormattedUrl;
 @Slf4j
 public class NFTService {
 
-    @Value("${nft.connection.avatar}")
+    @Value("${nft.collection.avatar}")
     private String avatarUrl;
-    @Value("${nft.connection.banner}")
+    @Value("${nft.collection.banner}")
     private String bannerUrl;
-    @Value("${nft.connection.modify.token.name: true}")
+    @Value("${nft.collection.modify.token.name: true}")
     private Boolean isModifiedTokenName;
+    @Value("${nft.collection.only.gif}")
+    private Boolean onlyGif;
 
     private final BlockChainService blockChainService;
     private final TokenDataService tokenDataService;
@@ -173,9 +175,12 @@ public class NFTService {
     }
 
     //If token 'imagePng' exist we assume that 'image' contain gif
-    private void storeTokenImage(TokenDataDto tokenData) {
-        if (Strings.isNotBlank(tokenData.getImagePng())) {
-            futureRequests.offerLast(imageService.s3UploadTokenImagesAsync(tokenData.getImagePng(), tokenData, tokenIdsFailed,TokenMetadata.PNG));
+    private void storeTokenImage(AbstractTokenDto tokenData) {
+        if (onlyGif) {
+            futureRequests.offerLast(imageService.s3UploadTokenImagesAsync(tokenData.getImage(), tokenData, tokenIdsFailed, TokenMetadata.GIF));
+            tokenData.setGif(true);
+        } else if (Strings.isNotBlank(tokenData.getImagePng())) {
+            futureRequests.offerLast(imageService.s3UploadTokenImagesAsync(tokenData.getImagePng(), tokenData, tokenIdsFailed, TokenMetadata.PNG));
             futureRequests.offerLast(imageService.s3UploadTokenImagesAsync(tokenData.getImage(), tokenData, tokenIdsFailed, TokenMetadata.GIF));
             tokenData.setGif(true);
         } else {
