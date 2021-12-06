@@ -1,6 +1,6 @@
 package com.pancakeswap.nft.publish.service;
 
-import com.pancakeswap.nft.publish.model.dto.TokenDataDto;
+import com.pancakeswap.nft.publish.model.dto.AbstractTokenDto;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.beans.factory.annotation.Value;
@@ -132,7 +132,7 @@ public class NFTService {
                             loadAndStoreTokenDataAsyncNextAttempt(tokenId, collectionId, url, attempt, "Response code: " + res.statusCode());
                         } else {
                             try {
-                                TokenDataDto tokenData = parseBody(res.body());
+                                AbstractTokenDto tokenData = parseBody(res.body());
                                 tokenData.setTokenId(tokenId);
                                 if (isModifiedTokenName) {
                                     tokenData.setName(String.format("%s %s", tokenData.getName(), tokenId));
@@ -160,7 +160,7 @@ public class NFTService {
         }
     }
 
-    private void storeTokenData(String collectionId, TokenDataDto tokenData) {
+    private void storeTokenData(String collectionId, AbstractTokenDto tokenData) {
         futureRequests.offerLast(CompletableFuture.runAsync(
                 () -> {
                     try {

@@ -1,13 +1,9 @@
 package com.pancakeswap.nft.publish.model.dto;
 
 import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.util.List;
 
 @Data
-@NoArgsConstructor
-public class TokenDataDto {
+public abstract class AbstractTokenDto {
     private String tokenId;
     private String name;
     private String description;
@@ -18,5 +14,4 @@ public class TokenDataDto {
     private Boolean webm;
     private Boolean gif;
 
-    private List<AttributeDto> attributes;
 }

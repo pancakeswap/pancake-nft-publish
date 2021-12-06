@@ -11,7 +11,7 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.util.IOUtils;
 import com.pancakeswap.nft.publish.exception.ImageLoadException;
-import com.pancakeswap.nft.publish.model.dto.TokenDataDto;
+import com.pancakeswap.nft.publish.model.dto.AbstractTokenDto;
 import lombok.extern.slf4j.Slf4j;
 import org.imgscalr.Scalr;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -89,7 +89,7 @@ public class ImageService {
         });
     }
 
-    public CompletableFuture<?> s3UploadTokenImagesAsync(String imageUrl, TokenDataDto tokenData, Set<String> tokenIdsFailed, TokenMetadata metadata) {
+    public CompletableFuture<?> s3UploadTokenImagesAsync(String imageUrl, AbstractTokenDto tokenData, Set<String> tokenIdsFailed, TokenMetadata metadata) {
         return CompletableFuture.runAsync(() -> {
             String tokenName = formattedTokenName(tokenData.getName());
             if (!imageExist(tokenName, metadata)) {

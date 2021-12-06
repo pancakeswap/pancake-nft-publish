@@ -1,7 +1,9 @@
 package com.pancakeswap.nft.publish.service;
 
+import com.pancakeswap.nft.publish.model.dto.AbstractTokenDto;
 import com.pancakeswap.nft.publish.model.dto.AttributeDto;
-import com.pancakeswap.nft.publish.model.dto.TokenDataDto;
+import com.pancakeswap.nft.publish.model.dto.TokenDataFormattedDto;
+import com.pancakeswap.nft.publish.model.dto.TokenDataNoFormattedDto;
 import com.pancakeswap.nft.publish.model.entity.*;
 import com.pancakeswap.nft.publish.model.entity.Collection;
 import com.pancakeswap.nft.publish.repository.*;
@@ -67,8 +69,15 @@ public class DBService {
     }
 
     @Transactional
-    public void storeToken(String collectionId, TokenDataDto tokenDataDto) {
-        List<ObjectId> attributes = storeAttributes(collectionId, tokenDataDto.getAttributes());
+    public <T extends AbstractTokenDto> void storeToken(String collectionId, T tokenDataDto) {
+        List<ObjectId> attributes;
+        if (tokenDataDto instanceof TokenDataFormattedDto) {
+            TokenDataFormattedDto dto = (TokenDataFormattedDto) tokenDataDto;
+            attributes = storeAttributes(collectionId, dto.getAttributes());
+        } else {
+            TokenDataNoFormattedDto dto = (TokenDataNoFormattedDto) tokenDataDto;
+            attributes = storeAttributes(collectionId, dto.getAttributes().entrySet().stream().map(e -> new AttributeDto(e.getKey(), e.getValue())).collect(Collectors.toList()));
+        }
 
         Token token = tokenRepository.findByParentCollectionAndTokenId(new ObjectId(collectionId), tokenDataDto.getTokenId());
         if (token == null) {
@@ -156,7 +165,7 @@ public class DBService {
         }
     }
 
-    private Metadata storeMetadata(TokenDataDto dto, String parentId) {
+    private Metadata storeMetadata(AbstractTokenDto dto, String parentId) {
         Metadata metadata = new Metadata();
         metadata.setParentCollection(new ObjectId(parentId));
         metadata.setName(dto.getName());

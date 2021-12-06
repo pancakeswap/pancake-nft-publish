@@ -3,7 +3,9 @@ package com.pancakeswap.nft.publish.util;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.pancakeswap.nft.publish.model.dto.TokenDataDto;
+import com.pancakeswap.nft.publish.model.dto.AbstractTokenDto;
+import com.pancakeswap.nft.publish.model.dto.TokenDataFormattedDto;
+import com.pancakeswap.nft.publish.model.dto.TokenDataNoFormattedDto;
 
 public class GsonUtil {
 
@@ -15,9 +17,17 @@ public class GsonUtil {
                 .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
                 .create();
 
-    public static TokenDataDto parseBody(String body) {
-        TokenDataDto underscore = gsonUnderscores.fromJson(body, TokenDataDto.class);
-        TokenDataDto identity = gsonIdentity.fromJson(body, TokenDataDto.class);
+    public static AbstractTokenDto parseBody(String body) {
+        AbstractTokenDto underscore;
+        AbstractTokenDto identity;
+
+        try {
+            underscore = gsonUnderscores.fromJson(body, TokenDataFormattedDto.class);
+            identity = gsonIdentity.fromJson(body, TokenDataFormattedDto.class);
+        } catch (Exception e) {
+            underscore = gsonUnderscores.fromJson(body, TokenDataNoFormattedDto.class);
+            identity = gsonIdentity.fromJson(body, TokenDataNoFormattedDto.class);
+        }
 
         if (underscore.getImagePng() == null) {
             underscore.setImagePng(identity.getImagePng());
