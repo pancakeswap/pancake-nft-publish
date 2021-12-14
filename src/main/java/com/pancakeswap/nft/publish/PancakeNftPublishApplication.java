@@ -42,8 +42,14 @@ public class PancakeNftPublishApplication {
                 DBService dbService = ctx.getBean(DBService.class);
                 Collection collection = dbService.getCollection();
 
-                if (args.length > 1 && "delete".equalsIgnoreCase(args[1])) {
-                    dbService.deleteCollection(collection.getId());
+                if (args.length > 1) {
+                    if ("delete".equalsIgnoreCase(args[1])) {
+                        dbService.deleteCollection(collection.getId());
+                    } else if ("delete_attr".equalsIgnoreCase(args[1])) {
+                        dbService.deleteAttributes(collection.getId());
+                    } else {
+                        throw new IllegalArgumentException("RELIST_COLLECTION argument not correct: " + args[1]);
+                    }
                 }
 
                 nftService.listNFT();
