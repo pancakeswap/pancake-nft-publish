@@ -9,9 +9,10 @@ public abstract class AbstractTokenDto {
     private String description;
     private String image;
     private String imagePng;
+    private String gif;
 
-    private Boolean mp4;
-    private Boolean webm;
-    private Boolean gif;
+    private Boolean isMp4;
+    private Boolean isWebm;
+    private Boolean isGif;
 
 }

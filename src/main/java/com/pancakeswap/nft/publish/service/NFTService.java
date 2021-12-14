@@ -178,11 +178,15 @@ public class NFTService {
     private void storeTokenImage(AbstractTokenDto tokenData) {
         if (onlyGif) {
             futureRequests.offerLast(imageService.s3UploadTokenImagesAsync(tokenData.getImage(), tokenData, tokenIdsFailed, TokenMetadata.GIF));
-            tokenData.setGif(true);
+            tokenData.setIsGif(true);
         } else if (Strings.isNotBlank(tokenData.getImagePng())) {
             futureRequests.offerLast(imageService.s3UploadTokenImagesAsync(tokenData.getImagePng(), tokenData, tokenIdsFailed, TokenMetadata.PNG));
             futureRequests.offerLast(imageService.s3UploadTokenImagesAsync(tokenData.getImage(), tokenData, tokenIdsFailed, TokenMetadata.GIF));
-            tokenData.setGif(true);
+            tokenData.setIsGif(true);
+        } else if (Strings.isNotBlank(tokenData.getGif())) {
+            futureRequests.offerLast(imageService.s3UploadTokenImagesAsync(tokenData.getImage(), tokenData, tokenIdsFailed, TokenMetadata.PNG));
+            futureRequests.offerLast(imageService.s3UploadTokenImagesAsync(tokenData.getGif(), tokenData, tokenIdsFailed, TokenMetadata.GIF));
+            tokenData.setIsGif(true);
         } else {
             futureRequests.offerLast(imageService.s3UploadTokenImagesAsync(tokenData.getImage(), tokenData, tokenIdsFailed, TokenMetadata.PNG));
         }

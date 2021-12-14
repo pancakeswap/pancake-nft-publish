@@ -94,9 +94,9 @@ public class DBService {
             metadataRepository.findById(token.getMetadata().toString()).ifPresent((meta) -> {
                 meta.setName(tokenDataDto.getName());
                 meta.setDescription(tokenDataDto.getDescription());
-                meta.setGif(Boolean.TRUE.equals(tokenDataDto.getGif()));
-                meta.setMp4(Boolean.TRUE.equals(tokenDataDto.getMp4()));
-                meta.setWebm(Boolean.TRUE.equals(tokenDataDto.getWebm()));
+                meta.setGif(Boolean.TRUE.equals(tokenDataDto.getIsGif()));
+                meta.setMp4(Boolean.TRUE.equals(tokenDataDto.getIsMp4()));
+                meta.setWebm(Boolean.TRUE.equals(tokenDataDto.getIsWebm()));
                 meta.setUpdatedAt(new Date());
                 metadataRepository.save(meta);
             });
@@ -170,9 +170,9 @@ public class DBService {
         metadata.setParentCollection(new ObjectId(parentId));
         metadata.setName(dto.getName());
         metadata.setDescription(dto.getDescription());
-        metadata.setGif(Boolean.TRUE.equals(dto.getGif()));
-        metadata.setMp4(Boolean.TRUE.equals(dto.getMp4()));
-        metadata.setWebm(Boolean.TRUE.equals(dto.getWebm()));
+        metadata.setGif(Boolean.TRUE.equals(dto.getIsGif()));
+        metadata.setMp4(Boolean.TRUE.equals(dto.getIsMp4()));
+        metadata.setWebm(Boolean.TRUE.equals(dto.getIsWebm()));
         metadata.setCreatedAt(new Date());
         metadata.setUpdatedAt(new Date());
 
