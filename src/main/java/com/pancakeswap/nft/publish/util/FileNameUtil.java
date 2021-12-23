@@ -17,7 +17,7 @@ public class FileNameUtil {
                 .replaceAll(REGEXP_CAMELCASE_2, "$1\0$2")
                 .replaceAll(DEFAULT_STRIP_REGEXP, "\0");
         if (res.startsWith("\0")) {
-            res = res.substring(res.indexOf("\0"));
+            res = res.substring(res.indexOf("\0") + 1);
         }
         if (res.endsWith("\0")) {
             res = res.substring(0, res.lastIndexOf("\0"));
