@@ -103,6 +103,12 @@ public class NFTService {
                 log.trace("Failed blocked waiting", e);
             }
 
+            //Dirty fix for race condition on last item
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ignore) {
+            }
+
             futureRequests.removeIf(CompletableFuture::isDone);
             allAttemptsFinished = futureRequests.size() == 0;
         }
