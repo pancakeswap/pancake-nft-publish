@@ -28,6 +28,9 @@ public class PancakeNftPublishApplication {
         }
 
         NFTService nftService = ctx.getBean(NFTService.class);
+        DBService dbService = ctx.getBean(DBService.class);
+        Collection collection = dbService.getCollection();
+
         switch (RunMode.getByName(args[0])) {
             case LIST:
                 nftService.listNFT();
@@ -39,9 +42,6 @@ public class PancakeNftPublishApplication {
                 nftService.relistNft(idsToRelist);
                 break;
             case RELIST_COLLECTION:
-                DBService dbService = ctx.getBean(DBService.class);
-                Collection collection = dbService.getCollection();
-
                 if (args.length > 1) {
                     if ("delete".equalsIgnoreCase(args[1])) {
                         dbService.deleteCollection(collection.getId());
@@ -51,8 +51,10 @@ public class PancakeNftPublishApplication {
                         throw new IllegalArgumentException("RELIST_COLLECTION argument not correct: " + args[1]);
                     }
                 }
-
                 nftService.listNFT();
+                break;
+            case DELETE_COLLECTION:
+                dbService.deleteCollection(collection.getId());
                 break;
         }
 
@@ -61,7 +63,7 @@ public class PancakeNftPublishApplication {
     }
 
     private enum RunMode {
-        LIST, RELIST_TOKENS, RELIST_COLLECTION;
+        LIST, RELIST_TOKENS, RELIST_COLLECTION, DELETE_COLLECTION;
 
         public static RunMode getByName(String name) {
             return Arrays.stream(RunMode.values()).filter(e -> e.name().toLowerCase(Locale.ROOT)
