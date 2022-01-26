@@ -79,14 +79,7 @@ public class DBService {
             attributes = storeAttributes(collectionId, dto.getAttributes().entrySet().stream().map(e -> new AttributeDto(e.getKey(), e.getValue())).collect(Collectors.toList()));
         }
 
-        Token token = tokenRepository.findByParentCollectionAndTokenId(new ObjectId(collectionId), tokenDataDto.getTokenId());
-        if (token == null) {
-            token = new Token();
-            token.setParentCollection(new ObjectId(collectionId));
-            token.setCreatedAt(new Date());
-            token.setUpdatedAt(new Date());
-        }
-
+        Token token = findToken(collectionId, tokenDataDto.getTokenId());
         if (token.getMetadata() == null) {
             Metadata metadata = storeMetadata(tokenDataDto, collectionId);
             token.setMetadata(new ObjectId(metadata.getId()));
@@ -107,6 +100,44 @@ public class DBService {
         token.setAttributes(attributes);
 
         tokenRepository.save(token);
+    }
+
+    @Transactional
+    public <T extends AbstractTokenDto> void storeBunnyToken(String collectionId, T tokenDataDto) {
+        List<ObjectId> attributes;
+        if (tokenDataDto instanceof TokenDataFormattedDto) {
+            TokenDataFormattedDto dto = (TokenDataFormattedDto) tokenDataDto;
+            attributes = storeAttributes(collectionId, dto.getAttributes());
+        } else {
+            TokenDataNoFormattedDto dto = (TokenDataNoFormattedDto) tokenDataDto;
+            attributes = storeAttributes(collectionId, dto.getAttributes().entrySet().stream().map(e -> new AttributeDto(e.getKey(), e.getValue())).collect(Collectors.toList()));
+        }
+
+        Token token = findToken(collectionId, tokenDataDto.getTokenId());
+        if (token.getMetadata() == null) {
+            Optional<Metadata> metadata = metadataRepository.findByParentCollectionAndName(new ObjectId(collectionId), tokenDataDto.getName());
+            if (metadata.isEmpty()) {
+                System.out.println("ww");
+            }
+            token.setMetadata(new ObjectId(metadata.get().getId()));
+        }
+
+        token.setTokenId(tokenDataDto.getTokenId());
+        token.setBurned(Boolean.TRUE.equals(token.getBurned()));
+        token.setAttributes(attributes);
+
+        tokenRepository.save(token);
+    }
+
+    private Token findToken(String collectionId, String tokenId) {
+        Token token = tokenRepository.findByParentCollectionAndTokenId(new ObjectId(collectionId), tokenId);
+        if (token == null) {
+            token = new Token();
+            token.setParentCollection(new ObjectId(collectionId));
+            token.setCreatedAt(new Date());
+            token.setUpdatedAt(new Date());
+        }
+        return token;
     }
 
     @Transactional

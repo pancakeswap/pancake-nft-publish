@@ -25,7 +25,7 @@ public class TokenDataService {
     public CompletableFuture<HttpResponse<String>> callAsync(String url) {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(1))
+                .timeout(Duration.ofSeconds(3))
                 .build();
 
         return client.sendAsync(request, HttpResponse.BodyHandlers.ofString());

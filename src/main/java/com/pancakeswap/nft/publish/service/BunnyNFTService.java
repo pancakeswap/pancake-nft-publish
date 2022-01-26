@@ -11,45 +11,36 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.pancakeswap.nft.publish.util.GsonUtil.parseBody;
-import static com.pancakeswap.nft.publish.util.UrlUtil.getIpfsFormattedUrl;
 
 @Service
 @Slf4j
-public class NFTService extends AbstractNFTService {
+public class BunnyNFTService extends AbstractNFTService {
 
-    @Value("${nft.collection.avatar}")
-    private String avatarUrl;
-    @Value("${nft.collection.banner}")
-    private String bannerUrl;
-    @Value("${nft.collection.modify.token.name: true}")
-    private Boolean isModifiedTokenName;
+    @Value("${nft.bunny.collection.last.index}")
+    private Integer lastIndex;
 
-    public NFTService(BlockChainService blockChainService, TokenDataService tokenDataService, ImageService imageService, DBService dbService) {
+    public BunnyNFTService(BlockChainService blockChainService, TokenDataService tokenDataService, ImageService imageService, DBService dbService) {
         super(imageService, dbService, tokenDataService, blockChainService);
     }
 
     public void listNFT() throws ExecutionException, InterruptedException {
         log.info("fetching tokens started");
 
-        storeAvatarAndBanner();
-
         BigInteger totalSupply = blockChainService.getTotalSupply();
-        String collectionId = dbService.storeCollection(totalSupply.intValue()).getId();
+        String collectionId = dbService.getCollection().getId();
 
-        for (int i = 0; i < totalSupply.intValue(); i++) {
+        for (int i = lastIndex; i < totalSupply.intValue(); i++) {
             BigInteger tokenId = null;
-            String url = null;
             try {
                 tokenId = blockChainService.getTokenId(i);
-                url = getIpfsFormattedUrl(blockChainService.getTokenURI(tokenId));
 
-                loadAndStoreTokenDataAsync(tokenId.toString(), collectionId, url, new AtomicInteger(0));
+                loadAndStoreTokenDataAsync(tokenId.toString(), collectionId, new AtomicInteger(0));
                 futureRequests.removeIf(CompletableFuture::isDone);
             } catch (Exception e) {
                 if (tokenId != null) {
                     tokenIdsFailed.add(tokenId.toString());
                 }
-                log.error("failed to store token index: {}, id: {}, url: {}, collectionId: {}", i, tokenId, url, collectionId, e);
+                log.error("failed to store token index: {}, id: {}, collectionId: {}", i, tokenId, collectionId, e);
             }
         }
 
@@ -57,39 +48,24 @@ public class NFTService extends AbstractNFTService {
         log.info("fetching tokens finished");
     }
 
-    private void storeAvatarAndBanner() {
-        if (!avatarUrl.isEmpty()) {
-            futureRequests.offerLast(imageService.uploadAvatarImage(avatarUrl));
-        } else {
-            log.info("avatar url is empty");
-        }
-        if (!bannerUrl.isEmpty()) {
-            futureRequests.offerLast(imageService.uploadBannerImage(bannerUrl));
-        } else {
-            log.info("banner url is empty");
-        }
-    }
-
+    @Override
     protected void loadAndStoreTokenData(String body, String tokenId, String collectionId, String url) {
         try {
             AbstractTokenDto tokenData = parseBody(body);
             tokenData.setTokenId(tokenId);
-            if (isModifiedTokenName) {
-                tokenData.setName(String.format("%s %s", tokenData.getName(), tokenId));
-            }
-            storeTokenImage(tokenData);
-            storeTokenData(collectionId, tokenData);
+//            storeTokenImage(tokenData);
+            storeBunnyTokenData(collectionId, tokenData);
         } catch (Exception ex) {
             tokenIdsFailed.add(tokenId);
             log.error("Can parse and store token data from: {}. Token id: {}. Error message: {}", url, tokenId, ex.getMessage());
         }
     }
 
-    private void storeTokenData(String collectionId, AbstractTokenDto tokenData) {
+    protected void storeBunnyTokenData(String collectionId, AbstractTokenDto tokenData) {
         futureRequests.offerLast(CompletableFuture.runAsync(
                 () -> {
                     try {
-                        dbService.storeToken(collectionId, tokenData);
+                        dbService.storeBunnyToken(collectionId, tokenData);
                     } catch (Exception e) {
                         tokenIdsFailed.add(tokenData.getTokenId());
                         log.error("Can not store token data. Token id: {}, collectionId: {}, Error message: {}", tokenData.getTokenId(), collectionId, e.getMessage());
