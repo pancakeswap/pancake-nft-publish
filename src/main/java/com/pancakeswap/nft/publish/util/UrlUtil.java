@@ -6,12 +6,12 @@ import java.util.Locale;
 
 public class UrlUtil {
 
-    public static final String pancakeIpfsHost = "ipfs.pancakeswap.com";
+    public static final String pancakeIpfsHost = "pancake.mypinata.cloud";
     public static final String pancakeIpfsNode = String.format("%s%s%s", "https://", pancakeIpfsHost,"/ipfs/");
 
     public static String getIpfsFormattedUrl(String ipfsUrl) {
         if (ipfsUrl.startsWith("ipfs://")) {
-            return ipfsUrl.replace("ipfs://", pancakeIpfsNode);
+            return pancakeIpfsNode + ipfsUrl.replace("ipfs://", "");
         } else {
             try {
                 URI uri = new URI(ipfsUrl);
