@@ -91,21 +91,19 @@ public abstract class AbstractNFTService {
                 if (tokenResponse.get(url) != null) {
                     loadAndStoreTokenData(tokenResponse.get(url), tokenId, collectionId, url);
                 } else {
-                    CompletableFuture<HttpResponse<String>> resp = tokenDataService.callAsync(url)
-                            .whenComplete((res, e) -> {
-                                if (e != null) {
-                                    loadAndStoreTokenDataAsyncNextAttempt(tokenId, collectionId, url, attempt, e.getMessage());
-                                } else {
-                                    if (res.statusCode() != 200) {
-                                        loadAndStoreTokenDataAsyncNextAttempt(tokenId, collectionId, url, attempt, "Response code: " + res.statusCode());
-                                    } else {
-                                        tokenResponse.putIfAbsent(url, res.body());
-                                        loadAndStoreTokenData(res.body(), tokenId, collectionId, url);
-                                    }
-                                }
-                            });
-
-                    futureRequests.offerLast(resp);
+                    futureRequests.offerLast(CompletableFuture.runAsync(() -> {
+                        try {
+                            HttpResponse<String> res = tokenDataService.call(url);
+                            if (res.statusCode() != 200) {
+                                loadAndStoreTokenDataAsyncNextAttempt(tokenId, collectionId, url, attempt, "Response code: " + res.statusCode());
+                            } else {
+                                tokenResponse.putIfAbsent(url, res.body());
+                                loadAndStoreTokenData(res.body(), tokenId, collectionId, url);
+                            }
+                        } catch (Exception e) {
+                            loadAndStoreTokenDataAsyncNextAttempt(tokenId, collectionId, url, attempt, e.getMessage());
+                        }
+                    }));
                 }
             } catch (Exception ex) {
                 log.error("failed to store token index: {}, id: {}, collectionId: {}", tokenId, collectionId, ex.getMessage());
@@ -114,20 +112,18 @@ public abstract class AbstractNFTService {
     }
 
     protected void loadAndStoreTokenDataAsync(String tokenId, String collectionId, String url, AtomicInteger attempt) {
-        CompletableFuture<HttpResponse<String>> resp = tokenDataService.callAsync(url)
-                .whenComplete((res, e) -> {
-                    if (e != null) {
-                        loadAndStoreTokenDataAsyncNextAttempt(tokenId, collectionId, url, attempt, e.getMessage());
-                    } else {
-                        if (res.statusCode() != 200) {
-                            loadAndStoreTokenDataAsyncNextAttempt(tokenId, collectionId, url, attempt, "Response code: " + res.statusCode());
-                        } else {
-                            loadAndStoreTokenData(res.body(), tokenId, collectionId, url);
-                        }
-                    }
-                });
-
-        futureRequests.offerLast(resp);
+        futureRequests.offerLast(CompletableFuture.runAsync(() -> {
+            try {
+                HttpResponse<String> res = tokenDataService.call(url);
+                if (res.statusCode() != 200) {
+                    loadAndStoreTokenDataAsyncNextAttempt(tokenId, collectionId, url, attempt, "Response code: " + res.statusCode());
+                } else {
+                    loadAndStoreTokenData(res.body(), tokenId, collectionId, url);
+                }
+            } catch (Exception e) {
+                loadAndStoreTokenDataAsyncNextAttempt(tokenId, collectionId, url, attempt, e.getMessage());
+            }
+        }));
     }
 
     protected void loadAndStoreTokenDataAsyncNextAttempt(String tokenId, String collectionId, String url, AtomicInteger attempt, String failReason) {
