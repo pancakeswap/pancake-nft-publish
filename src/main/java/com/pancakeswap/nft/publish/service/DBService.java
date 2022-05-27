@@ -115,11 +115,9 @@ public class DBService {
 
         Token token = findToken(collectionId, tokenDataDto.getTokenId());
         if (token.getMetadata() == null) {
-            Optional<Metadata> metadata = metadataRepository.findByParentCollectionAndName(new ObjectId(collectionId), tokenDataDto.getName());
-            if (metadata.isEmpty()) {
-                System.out.println("ww");
-            }
-            token.setMetadata(new ObjectId(metadata.get().getId()));
+            Metadata metadata = metadataRepository.findByParentCollectionAndName(new ObjectId(collectionId), tokenDataDto.getName())
+                    .orElse(storeMetadata(tokenDataDto, collectionId));
+            token.setMetadata(new ObjectId(metadata.getId()));
         }
 
         token.setTokenId(tokenDataDto.getTokenId());

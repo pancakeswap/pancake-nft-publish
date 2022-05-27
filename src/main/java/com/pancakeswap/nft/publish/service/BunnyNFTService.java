@@ -23,6 +23,36 @@ public class BunnyNFTService extends AbstractNFTService {
         super(imageService, dbService, tokenDataService, blockChainService);
     }
 
+    public void listOnlyOnePerBunnyID() throws ExecutionException, InterruptedException {
+        log.info("fetching tokens started");
+        int lastAddedBunnyId = 24;
+
+        BigInteger totalSupply = blockChainService.getTotalSupply();
+        String collectionId = dbService.getCollection().getId();
+
+        for (int i = lastIndex; i < totalSupply.intValue(); i++) {
+            BigInteger tokenId = null;
+            BigInteger bunnyID;
+            try {
+                tokenId = blockChainService.getTokenId(i);
+                bunnyID = blockChainService.getBunnyId(tokenId);
+                if (bunnyID.intValue() > lastAddedBunnyId) {
+                    loadAndStoreTokenDataAsync(tokenId.toString(), collectionId, new AtomicInteger(0));
+                    futureRequests.removeIf(CompletableFuture::isDone);
+                    lastAddedBunnyId = bunnyID.intValue();
+                }
+            } catch (Exception e) {
+                if (tokenId != null) {
+                    tokenIdsFailed.add(tokenId.toString());
+                }
+                log.error("failed to store token index: {}, id: {}, collectionId: {}", i, tokenId, collectionId, e);
+            }
+        }
+
+        waitFutureRequestFinished();
+        log.info("fetching tokens finished. LastIndex - {}, lastAddedBunnyId - {}", totalSupply.intValue() - 1, lastAddedBunnyId);
+    }
+
     public void listNFT() throws ExecutionException, InterruptedException {
         log.info("fetching tokens started");
 
@@ -45,7 +75,7 @@ public class BunnyNFTService extends AbstractNFTService {
         }
 
         waitFutureRequestFinished();
-        log.info("fetching tokens finished");
+        log.info("fetching tokens finished. LastIndex - {}", totalSupply.intValue() - 1);
     }
 
     @Override

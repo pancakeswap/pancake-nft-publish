@@ -11,7 +11,6 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 
 import java.math.BigInteger;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -61,7 +60,7 @@ public class PancakeNftPublishApplication {
                 }
                 nftService.listNFT();
                 break;
-            case RELIST_BUNNIES:
+            case LIST_BUNNIES:
                 if (args.length > 1) {
                     bunnyNFTService.relistNft(
                             Arrays.stream(args[1].split(","))
@@ -69,6 +68,9 @@ public class PancakeNftPublishApplication {
                 } else {
                     bunnyNFTService.listNFT();
                 }
+                break;
+            case LIST_BUNNIES_OPT:
+                bunnyNFTService.listOnlyOnePerBunnyID();
                 break;
             case DELETE_COLLECTION:
                 dbService.deleteCollection(collection.getId());
@@ -80,7 +82,7 @@ public class PancakeNftPublishApplication {
     }
 
     private enum RunMode {
-        LIST, RELIST_TOKENS,RELIST_TOKENS_BY_INDEX, RELIST_COLLECTION, RELIST_BUNNIES, DELETE_COLLECTION;
+        LIST, RELIST_TOKENS,RELIST_TOKENS_BY_INDEX, RELIST_COLLECTION, LIST_BUNNIES, LIST_BUNNIES_OPT, DELETE_COLLECTION;
 
         public static RunMode getByName(String name) {
             return Arrays.stream(RunMode.values()).filter(e -> e.name().toLowerCase(Locale.ROOT)

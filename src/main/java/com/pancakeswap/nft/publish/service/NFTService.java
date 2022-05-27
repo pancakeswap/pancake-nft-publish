@@ -41,7 +41,10 @@ public class NFTService extends AbstractNFTService {
             String url = null;
             try {
                 tokenId = blockChainService.getTokenId(i);
+//                tokenId = BigInteger.valueOf(i);
+
                 url = getIpfsFormattedUrl(blockChainService.getTokenURI(tokenId));
+//                url = blockChainService.getTokenURI(tokenId);
 
                 loadAndStoreTokenDataAsync(tokenId.toString(), collectionId, url, new AtomicInteger(0));
                 futureRequests.removeIf(CompletableFuture::isDone);

@@ -60,6 +60,19 @@ public class BlockChainService {
         return (BigInteger) res.get(0).getValue();
     }
 
+    public BigInteger getBunnyId(BigInteger index) throws ExecutionException, InterruptedException {
+        Function function = new Function(
+                "getBunnyId",
+                Arrays.asList(new Uint(index)),
+                Arrays.asList(new TypeReference<Uint>() {}));
+
+        List<Type> res = callBlockchainFunction(function);
+        if (res.isEmpty()) {
+            throw new RuntimeException("Decoded response is empty");
+        }
+        return (BigInteger) res.get(0).getValue();
+    }
+
     public String getTokenURI(BigInteger index) throws ExecutionException, InterruptedException {
         Function function = new Function(
                 "tokenURI",

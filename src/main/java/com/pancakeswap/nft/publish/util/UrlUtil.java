@@ -11,7 +11,7 @@ public class UrlUtil {
 
     public static String getIpfsFormattedUrl(String ipfsUrl) {
         if (ipfsUrl.startsWith("ipfs://")) {
-            return pancakeIpfsNode + ipfsUrl.replace("ipfs://", "");
+            return pancakeIpfsNode + ipfsUrl.replace("ipfs://", "").trim();
         } else {
             try {
                 URI uri = new URI(ipfsUrl);
@@ -21,7 +21,7 @@ public class UrlUtil {
                 }
             } catch (URISyntaxException ignore) {
             }
-            return ipfsUrl;
+            return ipfsUrl.trim();
         }
     }
 }
