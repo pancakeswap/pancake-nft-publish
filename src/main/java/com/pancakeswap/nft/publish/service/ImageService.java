@@ -120,7 +120,10 @@ public class ImageService {
                 uploadSync(images.getValue(), String.format("%s-1000.png", tokenName), metadata);
                 break;
             case GIF:
-                uploadGifSync(getImage(imageUrl), String.format("%s.gif", tokenName), metadata);
+                uploadAnimatedSync(getImage(imageUrl), String.format("%s.gif", tokenName), metadata);
+                break;
+            case MP4:
+                uploadAnimatedSync(getImage(imageUrl), String.format("%s.mp4", tokenName), metadata);
                 break;
         }
 
@@ -142,6 +145,7 @@ public class ImageService {
                         Scalr.OP_ANTIALIAS);
                 break;
             } catch (Exception ignore) {
+                System.out.println(ignore);
             }
         }
         if (original == null || resized == null) {
@@ -184,7 +188,7 @@ public class ImageService {
         s3client.putObject(putObject);
     }
 
-    private void uploadGifSync(URL url, String filename, TokenMetadata metadata) throws IOException {
+    private void uploadAnimatedSync(URL url, String filename, TokenMetadata metadata) throws IOException {
         try (InputStream in = url.openStream()) {
 
             byte[] data = IOUtils.toByteArray(in);
