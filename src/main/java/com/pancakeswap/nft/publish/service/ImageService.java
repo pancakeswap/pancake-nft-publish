@@ -29,7 +29,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.AbstractMap;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 
 import static com.pancakeswap.nft.publish.util.FileNameUtil.formattedTokenName;
 import static com.pancakeswap.nft.publish.util.UrlUtil.getIpfsFormattedUrl;
@@ -38,7 +37,6 @@ import static com.pancakeswap.nft.publish.util.UrlUtil.getIpfsFormattedUrl;
 @Slf4j
 public class ImageService {
 
-    private final String contract;
     @Value("${aws.access.key}")
     private String accessKey;
     @Value("${aws.secret.key}")
@@ -47,11 +45,6 @@ public class ImageService {
     private String bucket;
 
     private AmazonS3 s3client;
-
-    @Autowired
-    public ImageService(@Value("${nft.collection.address}") String contract) {
-        this.contract = Keys.toChecksumAddress(contract);
-    }
 
     @PostConstruct
     public void postConstruct() {
@@ -64,66 +57,60 @@ public class ImageService {
                 .build();
     }
 
-    public CompletableFuture<?> uploadAvatarImage(String imageUrl) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                BufferedImage original = ImageIO.read(new URL(imageUrl));
-
-                uploadSync(original, "avatar.png", TokenMetadata.PNG);
-            } catch (IOException ignore) {
-                log.error("failed to upload image avatar. url: {}", imageUrl);
-            }
-        });
+    public void uploadAvatarImage(String collectionAddress, String imageUrl) {
+        try {
+            BufferedImage original = ImageIO.read(new URL(imageUrl));
+            uploadSync(original, "avatar.png", collectionAddress, TokenMetadata.PNG);
+        } catch (IOException ignore) {
+            log.error("failed to upload image avatar. url: {}", imageUrl);
+        }
     }
 
-    public CompletableFuture<?> uploadBannerImage(String imageUrl) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                BufferedImage original = ImageIO.read(new URL(imageUrl));
+    public void uploadBannerImage(String collectionAddress, String imageUrl) {
+        try {
+            BufferedImage original = ImageIO.read(new URL(imageUrl));
 
-                uploadSync(original, "banner-lg.png", TokenMetadata.PNG);
-                uploadSync(original, "banner-sm.png", TokenMetadata.PNG);
-            } catch (IOException ignore) {
-                log.error("failed to upload image banner. url: {}", imageUrl);
-            }
-        });
+            uploadSync(original, "banner-lg.png", collectionAddress, TokenMetadata.PNG);
+            uploadSync(original, "banner-sm.png", collectionAddress, TokenMetadata.PNG);
+        } catch (IOException ignore) {
+            log.error("failed to upload image banner. url: {}", imageUrl);
+        }
     }
 
-    public CompletableFuture<?> s3UploadTokenImagesAsync(String imageUrl, AbstractTokenDto tokenData, Set<String> tokenIdsFailed, TokenMetadata metadata) {
-        return CompletableFuture.runAsync(() -> {
-            String tokenName = formattedTokenName(tokenData.getName());
-            if (!imageExist(tokenName, metadata)) {
-                int attempts = 10;
-                int i = 0;
-                boolean done = false;
-                while (i < attempts && !done) {
-                    try {
-                        uploadTokenImages(imageUrl, tokenName, metadata);
-                        done = true;
-                    } catch (IOException ignore) {
-                    }
-                    i++;
+    public void s3UploadTokenImagesAsync(String collectionAddress, String imageUrl, AbstractTokenDto tokenData, Set<String> tokenIdsFailed, TokenMetadata metadata) {
+        String tokenName = formattedTokenName(tokenData.getName());
+        if (!imageExist(collectionAddress, tokenName, metadata)) {
+            int attempts = 10;
+            int i = 0;
+            boolean done = false;
+            while (i < attempts && !done) {
+                try {
+                    uploadTokenImages(collectionAddress, imageUrl, tokenName, metadata);
+                    done = true;
+                } catch (IOException ignore) {
                 }
-                if (attempts == i) {
-                    tokenIdsFailed.add(tokenData.getTokenId());
-                    log.error("failed to upload {}. url: {}, formattedTokenName: {}", metadata, imageUrl, tokenName);
-                }
+                i++;
             }
-        });
+            if (attempts == i) {
+                tokenIdsFailed.add(tokenData.getTokenId());
+                log.error("failed to upload {}. url: {}, formattedTokenName: {}", metadata, imageUrl, tokenName);
+            }
+        }
+
     }
 
-    private void uploadTokenImages(String imageUrl, String tokenName, TokenMetadata metadata) throws IOException {
+    private void uploadTokenImages(String collectionAddress, String imageUrl, String tokenName, TokenMetadata metadata) throws IOException {
         switch (metadata) {
             case PNG:
                 AbstractMap.SimpleEntry<BufferedImage, BufferedImage> images = getImages(imageUrl);
-                uploadSync(images.getKey(), String.format("%s.png", tokenName), metadata);
-                uploadSync(images.getValue(), String.format("%s-1000.png", tokenName), metadata);
+                uploadSync(images.getKey(), String.format("%s.png", tokenName), collectionAddress, metadata);
+                uploadSync(images.getValue(), String.format("%s-1000.png", tokenName), collectionAddress, metadata);
                 break;
             case GIF:
-                uploadAnimatedSync(getImage(imageUrl), String.format("%s.gif", tokenName), metadata);
+                uploadAnimatedSync(getImage(imageUrl), String.format("%s.gif", tokenName), collectionAddress, metadata);
                 break;
             case MP4:
-                uploadAnimatedSync(getImage(imageUrl), String.format("%s.mp4", tokenName), metadata);
+                uploadAnimatedSync(getImage(imageUrl), String.format("%s.mp4", tokenName), collectionAddress, metadata);
                 break;
         }
 
@@ -165,14 +152,14 @@ public class ImageService {
             } catch (Exception ignore) {
             }
         }
-        if (original == null ) {
+        if (original == null) {
             throw new ImageLoadException("Failed to load image. Url: " + imageUrl);
         }
 
         return original;
     }
 
-    private void uploadSync(BufferedImage image, String filename, TokenMetadata metadata) throws IOException {
+    private void uploadSync(BufferedImage image, String filename, String contract, TokenMetadata metadata) throws IOException {
         ByteArrayOutputStream outstream = new ByteArrayOutputStream();
         ImageIO.write(image, metadata.getType(), outstream);
         byte[] buffer = outstream.toByteArray();
@@ -182,13 +169,13 @@ public class ImageService {
         meta.setContentType(metadata.getContentType());
         meta.setContentLength(buffer.length);
 
-        PutObjectRequest putObject = new PutObjectRequest(bucket, String.format("%s/%s/%s", "mainnet", contract, filename), is, meta)
+        PutObjectRequest putObject = new PutObjectRequest(bucket, String.format("%s/%s/%s", "mainnet", Keys.toChecksumAddress(contract), filename), is, meta)
                 .withCannedAcl(CannedAccessControlList.PublicRead);
 
         s3client.putObject(putObject);
     }
 
-    private void uploadAnimatedSync(URL url, String filename, TokenMetadata metadata) throws IOException {
+    private void uploadAnimatedSync(URL url, String filename, String collectionAddress, TokenMetadata metadata) throws IOException {
         try (InputStream in = url.openStream()) {
 
             byte[] data = IOUtils.toByteArray(in);
@@ -199,18 +186,18 @@ public class ImageService {
             meta.setContentType(metadata.getContentType());
             meta.setContentLength(data.length);
 
-            PutObjectRequest putObject = new PutObjectRequest(bucket, String.format("%s/%s/%s", "mainnet", contract, filename), is, meta)
+            PutObjectRequest putObject = new PutObjectRequest(bucket, String.format("%s/%s/%s", "mainnet", Keys.toChecksumAddress(collectionAddress), filename), is, meta)
                     .withCannedAcl(CannedAccessControlList.PublicRead);
 
             s3client.putObject(putObject);
         }
     }
 
-    private boolean imageExist(String formattedTokenName, TokenMetadata metadata) {
-        String image = String.format("%s/%s/%s.%s", "mainnet", contract, formattedTokenName, metadata.getType());
+    private boolean imageExist(String collectionAddress, String formattedTokenName, TokenMetadata metadata) {
+        String image = String.format("%s/%s/%s.%s", "mainnet", collectionAddress, formattedTokenName, metadata.getType());
         boolean exist = s3client.doesObjectExist(bucket, image);
         if (metadata == TokenMetadata.PNG) {
-            String resizedImage = String.format("%s/%s/%s-1000.%s", "mainnet", contract, formattedTokenName, metadata.getType());
+            String resizedImage = String.format("%s/%s/%s-1000.%s", "mainnet", Keys.toChecksumAddress(collectionAddress), formattedTokenName, metadata.getType());
             return exist && s3client.doesObjectExist(bucket, resizedImage);
         }
 

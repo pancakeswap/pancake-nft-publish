@@ -1,34 +1,21 @@
 package com.pancakeswap.nft.publish.service;
 
-import com.pancakeswap.nft.publish.model.dto.AbstractTokenDto;
-import com.pancakeswap.nft.publish.model.dto.AttributeDto;
-import com.pancakeswap.nft.publish.model.dto.TokenDataFormattedDto;
-import com.pancakeswap.nft.publish.model.dto.TokenDataNoFormattedDto;
+import com.pancakeswap.nft.publish.model.dto.*;
+import com.pancakeswap.nft.publish.model.dto.collection.CollectionDataDto;
 import com.pancakeswap.nft.publish.model.entity.*;
 import com.pancakeswap.nft.publish.model.entity.Collection;
 import com.pancakeswap.nft.publish.repository.*;
 import org.bson.types.ObjectId;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.springframework.transaction.annotation.Isolation.REPEATABLE_READ;
+
 @Service
 public class DBService {
-
-    @Value("${nft.collection.address}")
-    private String contract;
-    @Value("${nft.collection.name}")
-    private String name;
-    @Value("${nft.collection.description}")
-    private String description;
-    @Value("${nft.collection.symbol}")
-    private String symbol;
-    @Value("${nft.collection.owner}")
-    private String owner;
-
     private final CollectionRepository collectionRepository;
     private final AttributeRepository attributeRepository;
     private final TokenRepository tokenRepository;
@@ -43,22 +30,22 @@ public class DBService {
         this.metadataRepository = metadataRepository;
     }
 
-    public Collection getCollection() {
-        return collectionRepository.findByAddress(contract.toLowerCase(Locale.ROOT));
+    public Collection getCollection(String collectionAddress) {
+        return collectionRepository.findByAddress(collectionAddress.toLowerCase(Locale.ROOT));
     }
 
-    public Collection storeCollection(Integer totalSupply) {
-        Collection collection = getCollection();
+    public Collection storeCollection(CollectionDataDto dataDto, Integer totalSupply) {
+        Collection collection = getCollection(dataDto.getAddress());
         if (collection != null) {
             return collection;
         }
 
         collection = new Collection();
-        collection.setAddress(contract.toLowerCase(Locale.ROOT));
-        collection.setOwner(owner.toLowerCase(Locale.ROOT));
-        collection.setName(name);
-        collection.setDescription(description);
-        collection.setSymbol(symbol);
+        collection.setAddress(dataDto.getAddress().toLowerCase(Locale.ROOT));
+        collection.setOwner(dataDto.getOwner().toLowerCase(Locale.ROOT));
+        collection.setName(dataDto.getName());
+        collection.setDescription(dataDto.getDescription());
+        collection.setSymbol(dataDto.getSymbol());
         collection.setTotalSupply(totalSupply);
         collection.setVerified(false);
         collection.setVisible(false);
@@ -68,7 +55,7 @@ public class DBService {
         return collectionRepository.save(collection);
     }
 
-    @Transactional
+    @Transactional(isolation = REPEATABLE_READ)
     public <T extends AbstractTokenDto> void storeToken(String collectionId, T tokenDataDto) {
         List<ObjectId> attributes;
         if (tokenDataDto instanceof TokenDataFormattedDto) {
