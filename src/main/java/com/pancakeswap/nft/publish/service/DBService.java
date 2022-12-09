@@ -20,14 +20,16 @@ public class DBService {
     private final AttributeRepository attributeRepository;
     private final TokenRepository tokenRepository;
     private final MetadataRepository metadataRepository;
+    private final CollectionInfoRepository collectionInfoRepository;
 
     private final Map<String, String> attributesMapCache = Collections.synchronizedMap(new HashMap<>());
 
-    public DBService(CollectionRepository collectionRepository, AttributeRepository attributeRepository, TokenRepository tokenRepository, MetadataRepository metadataRepository) {
+    public DBService(CollectionRepository collectionRepository, AttributeRepository attributeRepository, TokenRepository tokenRepository, MetadataRepository metadataRepository, CollectionInfoRepository collectionInfoRepository) {
         this.collectionRepository = collectionRepository;
         this.attributeRepository = attributeRepository;
         this.tokenRepository = tokenRepository;
         this.metadataRepository = metadataRepository;
+        this.collectionInfoRepository = collectionInfoRepository;
     }
 
     public Collection getCollection(String collectionAddress) {
@@ -40,19 +42,32 @@ public class DBService {
             return collection;
         }
 
-        collection = new Collection();
-        collection.setAddress(dataDto.getAddress().toLowerCase(Locale.ROOT));
-        collection.setOwner(dataDto.getOwner().toLowerCase(Locale.ROOT));
-        collection.setName(dataDto.getName());
-        collection.setDescription(dataDto.getDescription());
-        collection.setSymbol(dataDto.getSymbol());
-        collection.setTotalSupply(totalSupply);
-        collection.setVerified(false);
-        collection.setVisible(false);
-        collection.setCreatedAt(new Date());
-        collection.setUpdatedAt(new Date());
+        collection = Collection.builder()
+                .address(dataDto.getAddress().toLowerCase(Locale.ROOT))
+                .owner(dataDto.getOwner().toLowerCase(Locale.ROOT))
+                .name(dataDto.getName())
+                .description(dataDto.getDescription())
+                .symbol(dataDto.getSymbol())
+                .totalSupply(totalSupply)
+                .verified(false).visible(false)
+                .createdAt(new Date()).updatedAt(new Date()).build();
 
-        return collectionRepository.save(collection);
+        collection = collectionRepository.save(collection);
+
+        CollectionInfo info = CollectionInfo.builder()
+                .collectionId(new ObjectId(collection.getId()))
+                .isModifiedTokenName(dataDto.getIsModifiedTokenName())
+                .onlyGif(dataDto.getOnlyGif())
+                .createdAt(new Date()).updatedAt(new Date()).build();
+        collectionInfoRepository.save(info);
+
+        return collection;
+    }
+
+    public void storeFailedIds(String collectionId, String ids) {
+        CollectionInfo info = collectionInfoRepository.findByCollectionId(new ObjectId(collectionId));
+        info.setFailedIds(ids);
+        collectionInfoRepository.save(info);
     }
 
     @Transactional(isolation = REPEATABLE_READ)
@@ -130,6 +145,7 @@ public class DBService {
         tokenRepository.deleteAllByParentCollection(new ObjectId(id));
         metadataRepository.deleteAllByParentCollection(new ObjectId(id));
         attributeRepository.deleteAllByParentCollection(new ObjectId(id));
+        collectionInfoRepository.deleteByCollectionId(id);
 
         collectionRepository.deleteById(id);
     }

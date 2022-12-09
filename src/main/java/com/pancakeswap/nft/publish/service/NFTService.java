@@ -62,7 +62,9 @@ public class NFTService extends AbstractNFTService {
         log.info("fetching tokens finished");
 
         if (!config.getTokenIdsFailed().isEmpty()) {
-            return "List of failed tokens IDs:" + config.getTokenIdsFailed().stream().sorted().collect(Collectors.joining(","));
+            String failedIds = config.getTokenIdsFailed().stream().sorted().collect(Collectors.joining(","));
+            dbService.storeFailedIds(collectionId, failedIds);
+            return "List of failed tokens IDs:" + failedIds;
         }
 
         return "Listed";
