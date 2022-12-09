@@ -6,16 +6,17 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.*;
 
 @Getter
 public class FutureConfig {
-
+    private final ExecutorService executor;
     private final Deque<CompletableFuture<?>> futureRequests;
     private final Set<String> tokenIdsFailed;
 
     private FutureConfig(Deque<CompletableFuture<?>> futureRequests, Set<String> tokenIdsFailed) {
+        executor = Executors.newFixedThreadPool(15);
+
         this.futureRequests = futureRequests;
         this.tokenIdsFailed = tokenIdsFailed;
     }
@@ -24,8 +25,8 @@ public class FutureConfig {
         this.futureRequests.removeIf(CompletableFuture::isDone);
     }
 
-    public void addFuture(CompletableFuture<?> completableFuture) {
-        this.futureRequests.offerLast(completableFuture);
+    public void addFuture(Runnable runnable) {
+        this.futureRequests.offerLast(CompletableFuture.runAsync(runnable, executor));
     }
 
     public void addFailedTokenId(String id) {

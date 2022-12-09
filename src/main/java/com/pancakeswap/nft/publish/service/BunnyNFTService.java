@@ -50,7 +50,6 @@ public class BunnyNFTService extends AbstractNFTService {
                 params.setTokenId(tokenId.toString());
                 if (bunnyID.intValue() > lastAddedBunnyId) {
                     loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
-                    config.removeIfDone();
                     lastAddedBunnyId = bunnyID.intValue();
                 }
             } catch (Exception e) {
@@ -82,7 +81,6 @@ public class BunnyNFTService extends AbstractNFTService {
                 params.setTokenId(tokenId.toString());
 
                 loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
-                config.removeIfDone();
             } catch (Exception e) {
                 if (tokenId != null) {
                     config.addFailedTokenId(tokenId.toString());
@@ -138,7 +136,7 @@ public class BunnyNFTService extends AbstractNFTService {
     }
 
     protected void storeBunnyTokenData(FutureConfig config, String collectionId, AbstractTokenDto tokenData) {
-        config.addFuture(CompletableFuture.runAsync(
+        config.addFuture(
                 () -> {
                     try {
                         dbService.storeBunnyToken(collectionId, tokenData);
@@ -146,6 +144,6 @@ public class BunnyNFTService extends AbstractNFTService {
                         config.addFailedTokenId(tokenData.getTokenId());
                         log.error("Can not store token data. Token id: {}, collectionId: {}, Error message: {}", tokenData.getTokenId(), collectionId, e.getMessage());
                     }
-                }));
+                });
     }
 }

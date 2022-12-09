@@ -9,7 +9,6 @@ import org.apache.logging.log4j.util.Strings;
 import org.springframework.stereotype.Service;
 
 import java.math.BigInteger;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -37,7 +36,6 @@ public class NFTService extends AbstractNFTService {
         String collectionId = dbService.storeCollection(dataDto, totalSupply.intValue()).getId();
 
 
-
         for (int i = 0; i < totalSupply.intValue(); i++) {
             BigInteger tokenId = null;
             String url = null;
@@ -52,7 +50,6 @@ public class NFTService extends AbstractNFTService {
                 params.setTokenUrl(url);
 
                 loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
-                config.removeIfDone();
             } catch (Exception e) {
                 if (tokenId != null) {
                     config.addFailedTokenId(tokenId.toString());
@@ -72,7 +69,7 @@ public class NFTService extends AbstractNFTService {
     }
 
     private void storeAvatarAndBanner(FutureConfig config, CollectionImageDto dto) {
-        config.addFuture(CompletableFuture.runAsync(() -> {
+        config.addFuture(() -> {
             if (!dto.getAvatarUrl().isEmpty()) {
                 imageService.uploadAvatarImage(dto.getAddress(), dto.getAvatarUrl());
             } else {
@@ -83,12 +80,12 @@ public class NFTService extends AbstractNFTService {
             } else {
                 log.info("banner url is empty");
             }
-        }));
+        });
     }
 
     //If token 'imagePng' exist we assume that 'image' contain gif
     protected void storeTokenImage(FutureConfig config, AbstractTokenDto tokenData, String collectionAddress, boolean onlyGif) {
-        config.addFuture(CompletableFuture.runAsync(() -> {
+        config.addFuture(() -> {
             if (onlyGif) {
                 imageService.s3UploadTokenImagesAsync(collectionAddress, tokenData.getImage(), tokenData, config.getTokenIdsFailed(), TokenMetadata.GIF);
                 tokenData.setIsGif(true);
@@ -103,7 +100,7 @@ public class NFTService extends AbstractNFTService {
             } else {
                 imageService.s3UploadTokenImagesAsync(collectionAddress, tokenData.getImage(), tokenData, config.getTokenIdsFailed(), TokenMetadata.PNG);
             }
-        }));
+        });
     }
 
     protected void loadAndStoreTokenData(FutureConfig config, String body, ListCollectionTokenParams params) {
@@ -122,14 +119,13 @@ public class NFTService extends AbstractNFTService {
     }
 
     private void storeTokenData(FutureConfig config, String collectionId, AbstractTokenDto tokenData) {
-        config.addFuture(CompletableFuture.runAsync(
-                () -> {
-                    try {
-                        dbService.storeToken(collectionId, tokenData);
-                    } catch (Exception e) {
-                        config.addFailedTokenId(tokenData.getTokenId());
-                        log.error("Can not store token data. Token id: {}, collectionId: {}, Error message: {}", tokenData.getTokenId(), collectionId, e.getMessage());
-                    }
-                }));
+        config.addFuture(() -> {
+            try {
+                dbService.storeToken(collectionId, tokenData);
+            } catch (Exception e) {
+                config.addFailedTokenId(tokenData.getTokenId());
+                log.error("Can not store token data. Token id: {}, collectionId: {}, Error message: {}", tokenData.getTokenId(), collectionId, e.getMessage());
+            }
+        });
     }
 }

@@ -60,7 +60,7 @@ public abstract class AbstractNFTService {
     protected abstract void loadAndStoreTokenData(FutureConfig config, String body, ListCollectionTokenParams params);
 
     protected void loadAndStoreTokenDataAsync(FutureConfig config, ListCollectionTokenParams params, AtomicInteger attempt) {
-        config.addFuture(CompletableFuture.runAsync(() -> {
+        config.addFuture(() -> {
             try {
                 String url = getIpfsFormattedUrl(blockChainService.getTokenURI(params.getCollectionAddress(), new BigInteger(params.getTokenId())));
                 params.setTokenUrl(url);
@@ -83,11 +83,11 @@ public abstract class AbstractNFTService {
             } catch (Exception ex) {
                 log.error("failed to store token index: {}, id: {}, collectionId: {}", params.getTokenId(), params.getCollectionId(), ex.getMessage());
             }
-        }));
+        });
     }
 
     protected void reStoreTokenDataAsync(FutureConfig config, ListCollectionTokenParams params, AtomicInteger attempt) {
-        config.addFuture(CompletableFuture.runAsync(() -> {
+        config.addFuture(() -> {
             try {
                 HttpResponse<String> res = tokenDataService.call(params.getTokenUrl());
                 if (res.statusCode() != 200) {
@@ -98,7 +98,7 @@ public abstract class AbstractNFTService {
             } catch (Exception e) {
                 loadAndStoreTokenDataAsyncNextAttempt(config, params, attempt, e.getMessage());
             }
-        }));
+        });
     }
 
     protected void loadAndStoreTokenDataAsyncNextAttempt(FutureConfig config, ListCollectionTokenParams params, AtomicInteger attempt, String failReason) {
