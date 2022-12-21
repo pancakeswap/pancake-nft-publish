@@ -8,6 +8,7 @@ import com.pancakeswap.nft.publish.repository.CollectionInfoRepository;
 import com.pancakeswap.nft.publish.repository.CollectionRepository;
 import com.pancakeswap.nft.publish.service.BlockChainService;
 import com.pancakeswap.nft.publish.service.NFTService;
+import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,7 @@ import java.math.BigInteger;
 import java.util.concurrent.ExecutionException;
 
 @Component
+@Slf4j
 public class UpdateNewMintedTokens {
 
     private final NFTService nftService;
@@ -32,7 +34,7 @@ public class UpdateNewMintedTokens {
 
     @Scheduled(fixedDelay = 1000 * 60, initialDelay = 0)
     public void updateCollections() throws ExecutionException, InterruptedException {
-        System.out.println("!!! updateCollections cron");
+        log.info("updateCollections started");
         for (Collection collection :  collectionRepository.findAll()) {
             CollectionInfo info = collectionInfoRepository.findByCollectionId(new ObjectId(collection.getId()));
             BigInteger totalSupply = blockChainService.getTotalSupply(collection.getAddress());
@@ -44,6 +46,7 @@ public class UpdateNewMintedTokens {
                 collectionRepository.save(collection);
             }
         }
+        log.info("updateCollections ended");
     }
 
     private CollectionDataDto from(Collection collection, CollectionInfo collectionInfo) {
