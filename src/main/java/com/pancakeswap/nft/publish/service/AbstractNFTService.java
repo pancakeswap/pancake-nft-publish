@@ -5,11 +5,9 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
-import javax.validation.constraints.NotNull;
 import java.math.BigInteger;
 import java.net.http.HttpResponse;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.pancakeswap.nft.publish.util.FutureUtils.waitFutureRequestFinished;
@@ -32,7 +30,7 @@ public abstract class AbstractNFTService {
         this.blockChainService = blockChainService;
     }
 
-    public void relistNft(String collectionAddress, List<BigInteger> tokenIds) {
+    public void relistNft(String collectionAddress, String[] tokenIds) {
         log.info("fetching tokens started");
 
         FutureConfig config = FutureConfig.init();
@@ -41,14 +39,11 @@ public abstract class AbstractNFTService {
 
         ListCollectionTokenParams params = new ListCollectionTokenParams(collectionId, collectionAddress);
 
-        tokenIds.forEach(tokenId -> {
+        Arrays.asList(tokenIds).forEach(tokenId -> {
             String url = null;
             try {
-                url = getIpfsFormattedUrl(blockChainService.getTokenURI(collectionAddress, tokenId));
-                params.setTokenUrl(url);
-                params.setTokenId(tokenId.toString());
-
-                reStoreTokenDataAsync(config, params, new AtomicInteger(0));
+                params.setTokenId(tokenId);
+                loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
             } catch (Exception e) {
                 log.error("failed to store token id: {}, url: {}, collectionId: {}", tokenId, url, collectionId, e);
             }
@@ -86,21 +81,6 @@ public abstract class AbstractNFTService {
         });
     }
 
-    protected void reStoreTokenDataAsync(FutureConfig config, ListCollectionTokenParams params, AtomicInteger attempt) {
-        config.addFuture(() -> {
-            try {
-                HttpResponse<String> res = tokenDataService.call(params.getTokenUrl());
-                if (res.statusCode() != 200) {
-                    loadAndStoreTokenDataAsyncNextAttempt(config, params, attempt, "Response code: " + res.statusCode());
-                } else {
-                    loadAndStoreTokenData(config, res.body(), params);
-                }
-            } catch (Exception e) {
-                loadAndStoreTokenDataAsyncNextAttempt(config, params, attempt, e.getMessage());
-            }
-        });
-    }
-
     protected void loadAndStoreTokenDataAsyncNextAttempt(FutureConfig config, ListCollectionTokenParams params, AtomicInteger attempt, String failReason) {
         int attemptValue = attempt.incrementAndGet();
         if (attemptValue < 10) {
@@ -113,7 +93,7 @@ public abstract class AbstractNFTService {
 
     @Getter
     @Setter
-    class ListCollectionTokenParams {
+    static class ListCollectionTokenParams {
         private final String collectionId;
         private final String collectionAddress;
         private String tokenId;

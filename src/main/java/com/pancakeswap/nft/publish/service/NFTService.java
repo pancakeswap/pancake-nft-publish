@@ -3,7 +3,6 @@ package com.pancakeswap.nft.publish.service;
 import com.pancakeswap.nft.publish.config.FutureConfig;
 import com.pancakeswap.nft.publish.model.dto.AbstractTokenDto;
 import com.pancakeswap.nft.publish.model.dto.collection.CollectionDataDto;
-import com.pancakeswap.nft.publish.model.dto.collection.CollectionImageDto;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.stereotype.Service;
@@ -25,18 +24,13 @@ public class NFTService extends AbstractNFTService {
         super(imageService, dbService, tokenDataService, blockChainService);
     }
 
-    public String listNFT(CollectionDataDto dataDto) throws ExecutionException, InterruptedException {
+    public String listNFT(FutureConfig config, CollectionDataDto dataDto, int startIndex) throws ExecutionException, InterruptedException {
         log.info("fetching tokens started");
-
-        FutureConfig config = FutureConfig.init();
-
-        storeAvatarAndBanner(config, dataDto);
 
         BigInteger totalSupply = blockChainService.getTotalSupply(dataDto.getAddress());
         String collectionId = dbService.storeCollection(dataDto, totalSupply.intValue()).getId();
 
-
-        for (int i = 0; i < totalSupply.intValue(); i++) {
+        for (int i = startIndex; i < totalSupply.intValue(); i++) {
             BigInteger tokenId = null;
             String url = null;
             try {
@@ -70,15 +64,15 @@ public class NFTService extends AbstractNFTService {
         return "Listed";
     }
 
-    private void storeAvatarAndBanner(FutureConfig config, CollectionImageDto dto) {
+    public void storeAvatarAndBanner(FutureConfig config, String address, String avatarUrl, String bannerUrl) {
         config.addFuture(() -> {
-            if (!dto.getAvatarUrl().isEmpty()) {
-                imageService.uploadAvatarImage(dto.getAddress(), dto.getAvatarUrl());
+            if (!avatarUrl.isEmpty()) {
+                imageService.uploadAvatarImage(address, avatarUrl);
             } else {
                 log.info("avatar url is empty");
             }
-            if (!dto.getBannerUrl().isEmpty()) {
-                imageService.uploadBannerImage(dto.getAddress(), dto.getBannerUrl());
+            if (!bannerUrl.isEmpty()) {
+                imageService.uploadBannerImage(address, bannerUrl);
             } else {
                 log.info("banner url is empty");
             }

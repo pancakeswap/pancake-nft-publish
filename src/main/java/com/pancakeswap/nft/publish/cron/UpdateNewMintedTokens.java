@@ -16,14 +16,14 @@ import java.math.BigInteger;
 import java.util.concurrent.ExecutionException;
 
 @Component
-public class UpdateCollections {
+public class UpdateNewMintedTokens {
 
     private final NFTService nftService;
     private final CollectionRepository collectionRepository;
     private final CollectionInfoRepository collectionInfoRepository;
     private final BlockChainService blockChainService;
 
-    public UpdateCollections(NFTService nftService, CollectionRepository collectionRepository, CollectionInfoRepository collectionInfoRepository, BlockChainService blockChainService) {
+    public UpdateNewMintedTokens(NFTService nftService, CollectionRepository collectionRepository, CollectionInfoRepository collectionInfoRepository, BlockChainService blockChainService) {
         this.nftService = nftService;
         this.collectionRepository = collectionRepository;
         this.collectionInfoRepository = collectionInfoRepository;
@@ -32,23 +32,30 @@ public class UpdateCollections {
 
     @Scheduled(fixedDelay = 1000 * 60, initialDelay = 0)
     public void updateCollections() throws ExecutionException, InterruptedException {
+        System.out.println("!!! updateCollections cron");
         for (Collection collection :  collectionRepository.findAll()) {
             CollectionInfo info = collectionInfoRepository.findByCollectionId(new ObjectId(collection.getId()));
-            FutureConfig config = FutureConfig.init();
             BigInteger totalSupply = blockChainService.getTotalSupply(collection.getAddress());
-
-            nftService.listNFT(from(collection));
-            System.out.println("updateCollections cron");
+            if (info != null && totalSupply.intValue() > collection.getTotalSupply()) {
+                System.out.println("Found new minted. Collection: " + collection.getAddress());
+                FutureConfig config = FutureConfig.init();
+                nftService.listNFT(config, from(collection, info), collection.getTotalSupply() - 1);
+                collection.setTotalSupply(totalSupply.intValue());
+                collectionRepository.save(collection);
+            }
         }
     }
 
-    private CollectionDataDto from(Collection collection) {
+    private CollectionDataDto from(Collection collection, CollectionInfo collectionInfo) {
         CollectionDataDto dataDto = new CollectionDataDto();
         dataDto.setAddress(collection.getAddress());
         dataDto.setName(collection.getName());
         dataDto.setDescription(collection.getDescription());
         dataDto.setSymbol(collection.getSymbol());
         dataDto.setOwner(collection.getOwner());
+
+        dataDto.setIsModifiedTokenName(collectionInfo.getIsModifiedTokenName());
+        dataDto.setOnlyGif(collectionInfo.getOnlyGif());
 
         return dataDto;
     }

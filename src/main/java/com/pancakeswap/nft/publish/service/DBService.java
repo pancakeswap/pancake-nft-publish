@@ -145,13 +145,9 @@ public class DBService {
         tokenRepository.deleteAllByParentCollection(new ObjectId(id));
         metadataRepository.deleteAllByParentCollection(new ObjectId(id));
         attributeRepository.deleteAllByParentCollection(new ObjectId(id));
-        collectionInfoRepository.deleteByCollectionId(id);
+        collectionInfoRepository.deleteByCollectionId(new ObjectId(id));
 
         collectionRepository.deleteById(id);
-    }
-
-    public void deleteAttributes(String id) {
-        attributeRepository.deleteAllByParentCollection(new ObjectId(id));
     }
 
     private List<ObjectId> storeAttributes(String collectionId, List<AttributeDto> attributes) {

@@ -1,5 +1,6 @@
 package com.pancakeswap.nft.publish.controller;
 
+import com.pancakeswap.nft.publish.config.FutureConfig;
 import com.pancakeswap.nft.publish.exception.ListingException;
 import com.pancakeswap.nft.publish.model.dto.collection.CollectionDataDto;
 import com.pancakeswap.nft.publish.service.DBService;
@@ -23,7 +24,9 @@ public class CollectionController {
     @PostMapping(path = "/collections")
     public ResponseEntity<String> listCollection(@Valid @RequestBody CollectionDataDto dataDto) {
         try {
-            String result = nftService.listNFT(dataDto);
+            FutureConfig config = FutureConfig.init();
+            nftService.storeAvatarAndBanner(config, dataDto.getAddress(), dataDto.getAvatarUrl(), dataDto.getBannerUrl());
+            String result = nftService.listNFT(config, dataDto, 0);
             return ResponseEntity.ok(result);
         } catch (Exception ex) {
             throw new ListingException("Failed to list collection");

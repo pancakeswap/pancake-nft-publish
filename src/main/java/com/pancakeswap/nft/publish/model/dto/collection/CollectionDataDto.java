@@ -9,7 +9,7 @@ import javax.validation.constraints.NotNull;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @NoArgsConstructor
-public class CollectionDataDto extends CollectionImageDto{
+public class CollectionDataDto extends CollectionImageDto {
 
     @NotNull
     private String name;
