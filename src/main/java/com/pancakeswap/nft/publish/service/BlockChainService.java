@@ -24,73 +24,75 @@ import java.util.concurrent.ExecutionException;
 @Service
 public class BlockChainService {
 
-    @Value("${nft.collection.address}")
-    private String contract;
     @Value("${wallet.address}")
-    private String address;
+    private String walletAddress;
     private final Web3j web3j;
 
     public BlockChainService() {
-        this.web3j = Web3j.build(new HttpService("https://bsc-dataseed1.binance.org:443"));;
+        this.web3j = Web3j.build(new HttpService("https://bsc-dataseed1.binance.org:443"));
     }
 
-    public BigInteger getTotalSupply() throws ExecutionException, InterruptedException {
+    public BigInteger getTotalSupply(String collectionAddress) throws ExecutionException, InterruptedException {
         Function function = new Function(
                 "totalSupply",
                 Collections.emptyList(),
-                Arrays.asList(new TypeReference<Uint>() {}));
+                Arrays.asList(new TypeReference<Uint>() {
+                }));
 
-        List<Type> res = callBlockchainFunction(function);
+        List<Type> res = callBlockchainFunction(collectionAddress, function);
         if (res.isEmpty()) {
             throw new RuntimeException("Decoded response is empty");
         }
         return (BigInteger) res.get(0).getValue();
     }
 
-    public BigInteger getTokenId(Integer index) throws ExecutionException, InterruptedException {
+    public BigInteger getTokenId(String collectionAddress, Integer index) throws ExecutionException, InterruptedException {
         Function function = new Function(
                 "tokenByIndex",
                 Arrays.asList(new Uint(BigInteger.valueOf(index))),
-                Arrays.asList(new TypeReference<Uint>() {}));
+                Arrays.asList(new TypeReference<Uint>() {
+                }));
 
-        List<Type> res = callBlockchainFunction(function);
+        List<Type> res = callBlockchainFunction(collectionAddress, function);
         if (res.isEmpty()) {
             throw new RuntimeException("Decoded response is empty");
         }
         return (BigInteger) res.get(0).getValue();
     }
 
-    public BigInteger getBunnyId(BigInteger index) throws ExecutionException, InterruptedException {
+    public BigInteger getBunnyId(String collectionAddress, BigInteger index) throws ExecutionException, InterruptedException {
         Function function = new Function(
                 "getBunnyId",
                 Arrays.asList(new Uint(index)),
-                Arrays.asList(new TypeReference<Uint>() {}));
+                Arrays.asList(new TypeReference<Uint>() {
+                }));
 
-        List<Type> res = callBlockchainFunction(function);
+        List<Type> res = callBlockchainFunction(collectionAddress, function);
         if (res.isEmpty()) {
             throw new RuntimeException("Decoded response is empty");
         }
         return (BigInteger) res.get(0).getValue();
     }
 
-    public String getTokenURI(BigInteger index) throws ExecutionException, InterruptedException {
+    public String getTokenURI(String collectionAddress, BigInteger index) throws ExecutionException, InterruptedException {
         Function function = new Function(
                 "tokenURI",
                 Arrays.asList(new Uint(index)),
-                Arrays.asList(new TypeReference<Utf8String>() {}));
+                Arrays.asList(new TypeReference<Utf8String>() {
+                }));
 
-        List<Type> res = callBlockchainFunction(function);
+        List<Type> res = callBlockchainFunction(collectionAddress, function);
         if (res.isEmpty()) {
             throw new RuntimeException("Decoded response is empty");
         }
         return (String) res.get(0).getValue();
     }
 
-    private List<Type> callBlockchainFunction(Function function) throws ExecutionException, InterruptedException {
+    private List<Type> callBlockchainFunction(String collectionAddress, Function function) throws ExecutionException, InterruptedException {
         String encodedFunction = FunctionEncoder.encode(function);
         EthCall response = web3j.ethCall(
-                Transaction.createEthCallTransaction(address, contract, encodedFunction),
-                DefaultBlockParameterName.LATEST)
+                        Transaction.createEthCallTransaction(walletAddress, collectionAddress, encodedFunction),
+                        DefaultBlockParameterName.LATEST)
                 .sendAsync().get();
 
         return FunctionReturnDecoder.decode(

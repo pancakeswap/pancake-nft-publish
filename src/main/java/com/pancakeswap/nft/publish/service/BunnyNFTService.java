@@ -1,16 +1,22 @@
 package com.pancakeswap.nft.publish.service;
 
+import com.pancakeswap.nft.publish.config.FutureConfig;
 import com.pancakeswap.nft.publish.model.dto.AbstractTokenDto;
+import com.pancakeswap.nft.publish.model.dto.collection.CollectionDataDto;
+import com.pancakeswap.nft.publish.model.entity.Collection;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigInteger;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.pancakeswap.nft.publish.util.FutureUtils.waitFutureRequestFinished;
 import static com.pancakeswap.nft.publish.util.GsonUtil.parseBody;
+import static com.pancakeswap.nft.publish.util.UrlUtil.getIpfsFormattedUrl;
 
 @Service
 @Slf4j
@@ -23,83 +29,121 @@ public class BunnyNFTService extends AbstractNFTService {
         super(imageService, dbService, tokenDataService, blockChainService);
     }
 
-    public void listOnlyOnePerBunnyID() throws ExecutionException, InterruptedException {
+    public void listOnlyOnePerBunnyID(String collectionAddress) throws ExecutionException, InterruptedException {
         log.info("fetching tokens started");
         int lastAddedBunnyId = 24;
 
-        BigInteger totalSupply = blockChainService.getTotalSupply();
-        String collectionId = dbService.getCollection().getId();
+        FutureConfig config = FutureConfig.init();
+
+        BigInteger totalSupply = blockChainService.getTotalSupply(collectionAddress);
+        Collection collection = dbService.getCollection(collectionAddress);
+
+        ListCollectionTokenParams params = new ListCollectionTokenParams(collection.getId(), collection.getAddress());
 
         for (int i = lastIndex; i < totalSupply.intValue(); i++) {
             BigInteger tokenId = null;
             BigInteger bunnyID;
             try {
-                tokenId = blockChainService.getTokenId(i);
-                bunnyID = blockChainService.getBunnyId(tokenId);
+                tokenId = blockChainService.getTokenId(collectionAddress, i);
+                bunnyID = blockChainService.getBunnyId(collectionAddress, tokenId);
+
+                params.setTokenId(tokenId.toString());
                 if (bunnyID.intValue() > lastAddedBunnyId) {
-                    loadAndStoreTokenDataAsync(tokenId.toString(), collectionId, new AtomicInteger(0));
-                    futureRequests.removeIf(CompletableFuture::isDone);
+                    loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
                     lastAddedBunnyId = bunnyID.intValue();
                 }
             } catch (Exception e) {
                 if (tokenId != null) {
-                    tokenIdsFailed.add(tokenId.toString());
+                    config.addFailedTokenId(tokenId.toString());
                 }
-                log.error("failed to store token index: {}, id: {}, collectionId: {}", i, tokenId, collectionId, e);
+                log.error("failed to store token index: {}, id: {}, collectionId: {}", i, tokenId, collection.getId(), e);
             }
         }
 
-        waitFutureRequestFinished();
+        waitFutureRequestFinished(config);
         log.info("fetching tokens finished. LastIndex - {}, lastAddedBunnyId - {}", totalSupply.intValue() - 1, lastAddedBunnyId);
     }
 
-    public void listNFT() throws ExecutionException, InterruptedException {
+    public void listNFT(CollectionDataDto dataDto) throws ExecutionException, InterruptedException {
         log.info("fetching tokens started");
 
-        BigInteger totalSupply = blockChainService.getTotalSupply();
-        String collectionId = dbService.getCollection().getId();
+        FutureConfig config = FutureConfig.init();
+
+        BigInteger totalSupply = blockChainService.getTotalSupply(dataDto.getAddress());
+        Collection collection = dbService.getCollection(dataDto.getAddress());
+
+        ListCollectionTokenParams params = new ListCollectionTokenParams(collection.getId(), collection.getAddress());
 
         for (int i = lastIndex; i < totalSupply.intValue(); i++) {
             BigInteger tokenId = null;
             try {
-                tokenId = blockChainService.getTokenId(i);
+                tokenId = blockChainService.getTokenId(dataDto.getAddress(), i);
+                params.setTokenId(tokenId.toString());
 
-                loadAndStoreTokenDataAsync(tokenId.toString(), collectionId, new AtomicInteger(0));
-                futureRequests.removeIf(CompletableFuture::isDone);
+                loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
             } catch (Exception e) {
                 if (tokenId != null) {
-                    tokenIdsFailed.add(tokenId.toString());
+                    config.addFailedTokenId(tokenId.toString());
                 }
-                log.error("failed to store token index: {}, id: {}, collectionId: {}", i, tokenId, collectionId, e);
+                log.error("failed to store token index: {}, id: {}, collectionId: {}", i, tokenId, collection.getId(), e);
             }
         }
 
-        waitFutureRequestFinished();
+        waitFutureRequestFinished(config);
         log.info("fetching tokens finished. LastIndex - {}", totalSupply.intValue() - 1);
     }
 
+    public void relistNftByIndex(String collectionAddress, List<Integer> tokenIds) {
+        log.info("fetching tokens started");
+
+        FutureConfig config = FutureConfig.init();
+
+        Collection collection = dbService.getCollection(collectionAddress);
+
+        ListCollectionTokenParams params = new ListCollectionTokenParams(collection.getId(), collection.getAddress());
+
+        tokenIds.forEach(i -> {
+            String url = null;
+            BigInteger tokenId = null;
+
+            try {
+                tokenId = blockChainService.getTokenId(collectionAddress, i);
+                url = getIpfsFormattedUrl(blockChainService.getTokenURI(collectionAddress, tokenId));
+
+                params.setTokenId(tokenId.toString());
+                params.setTokenUrl(url);
+
+                loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
+            } catch (Exception e) {
+                log.error("failed to store token id: {}, url: {}, collectionId: {}", params.getTokenId(), params.getTokenUrl(), params.getCollectionId(), e);
+            }
+        });
+        waitFutureRequestFinished(config);
+        log.info("fetching tokens finished");
+    }
+
     @Override
-    protected void loadAndStoreTokenData(String body, String tokenId, String collectionId, String url) {
+    protected void loadAndStoreTokenData(FutureConfig config, String body, ListCollectionTokenParams params) {
         try {
             AbstractTokenDto tokenData = parseBody(body);
-            tokenData.setTokenId(tokenId);
+            tokenData.setTokenId(params.getTokenId());
 //            storeTokenImage(tokenData);
-            storeBunnyTokenData(collectionId, tokenData);
+            storeBunnyTokenData(config, params.getCollectionId(), tokenData);
         } catch (Exception ex) {
-            tokenIdsFailed.add(tokenId);
-            log.error("Can parse and store token data from: {}. Token id: {}. Error message: {}", url, tokenId, ex.getMessage());
+            config.addFailedTokenId(params.getTokenId());
+            log.error("Can parse and store token data from: {}. Token id: {}. Error message: {}", params.getTokenUrl(), params.getTokenId(), ex.getMessage());
         }
     }
 
-    protected void storeBunnyTokenData(String collectionId, AbstractTokenDto tokenData) {
-        futureRequests.offerLast(CompletableFuture.runAsync(
+    protected void storeBunnyTokenData(FutureConfig config, String collectionId, AbstractTokenDto tokenData) {
+        config.addFuture(
                 () -> {
                     try {
                         dbService.storeBunnyToken(collectionId, tokenData);
                     } catch (Exception e) {
-                        tokenIdsFailed.add(tokenData.getTokenId());
+                        config.addFailedTokenId(tokenData.getTokenId());
                         log.error("Can not store token data. Token id: {}, collectionId: {}, Error message: {}", tokenData.getTokenId(), collectionId, e.getMessage());
                     }
-                }));
+                });
     }
 }

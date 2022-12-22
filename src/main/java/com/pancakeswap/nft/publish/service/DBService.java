@@ -1,74 +1,76 @@
 package com.pancakeswap.nft.publish.service;
 
-import com.pancakeswap.nft.publish.model.dto.AbstractTokenDto;
-import com.pancakeswap.nft.publish.model.dto.AttributeDto;
-import com.pancakeswap.nft.publish.model.dto.TokenDataFormattedDto;
-import com.pancakeswap.nft.publish.model.dto.TokenDataNoFormattedDto;
+import com.pancakeswap.nft.publish.model.dto.*;
+import com.pancakeswap.nft.publish.model.dto.collection.CollectionDataDto;
 import com.pancakeswap.nft.publish.model.entity.*;
 import com.pancakeswap.nft.publish.model.entity.Collection;
 import com.pancakeswap.nft.publish.repository.*;
 import org.bson.types.ObjectId;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.springframework.transaction.annotation.Isolation.REPEATABLE_READ;
+
 @Service
 public class DBService {
-
-    @Value("${nft.collection.address}")
-    private String contract;
-    @Value("${nft.collection.name}")
-    private String name;
-    @Value("${nft.collection.description}")
-    private String description;
-    @Value("${nft.collection.symbol}")
-    private String symbol;
-    @Value("${nft.collection.owner}")
-    private String owner;
-
     private final CollectionRepository collectionRepository;
     private final AttributeRepository attributeRepository;
     private final TokenRepository tokenRepository;
     private final MetadataRepository metadataRepository;
+    private final CollectionInfoRepository collectionInfoRepository;
 
     private final Map<String, String> attributesMapCache = Collections.synchronizedMap(new HashMap<>());
 
-    public DBService(CollectionRepository collectionRepository, AttributeRepository attributeRepository, TokenRepository tokenRepository, MetadataRepository metadataRepository) {
+    public DBService(CollectionRepository collectionRepository, AttributeRepository attributeRepository, TokenRepository tokenRepository, MetadataRepository metadataRepository, CollectionInfoRepository collectionInfoRepository) {
         this.collectionRepository = collectionRepository;
         this.attributeRepository = attributeRepository;
         this.tokenRepository = tokenRepository;
         this.metadataRepository = metadataRepository;
+        this.collectionInfoRepository = collectionInfoRepository;
     }
 
-    public Collection getCollection() {
-        return collectionRepository.findByAddress(contract.toLowerCase(Locale.ROOT));
+    public Collection getCollection(String collectionAddress) {
+        return collectionRepository.findByAddress(collectionAddress.toLowerCase(Locale.ROOT));
     }
 
-    public Collection storeCollection(Integer totalSupply) {
-        Collection collection = getCollection();
+    public Collection storeCollection(CollectionDataDto dataDto, Integer totalSupply) {
+        Collection collection = getCollection(dataDto.getAddress());
         if (collection != null) {
             return collection;
         }
 
-        collection = new Collection();
-        collection.setAddress(contract.toLowerCase(Locale.ROOT));
-        collection.setOwner(owner.toLowerCase(Locale.ROOT));
-        collection.setName(name);
-        collection.setDescription(description);
-        collection.setSymbol(symbol);
-        collection.setTotalSupply(totalSupply);
-        collection.setVerified(false);
-        collection.setVisible(false);
-        collection.setCreatedAt(new Date());
-        collection.setUpdatedAt(new Date());
+        collection = Collection.builder()
+                .address(dataDto.getAddress().toLowerCase(Locale.ROOT))
+                .owner(dataDto.getOwner().toLowerCase(Locale.ROOT))
+                .name(dataDto.getName())
+                .description(dataDto.getDescription())
+                .symbol(dataDto.getSymbol())
+                .totalSupply(totalSupply)
+                .verified(false).visible(false)
+                .createdAt(new Date()).updatedAt(new Date()).build();
 
-        return collectionRepository.save(collection);
+        collection = collectionRepository.save(collection);
+
+        CollectionInfo info = CollectionInfo.builder()
+                .collectionId(new ObjectId(collection.getId()))
+                .isModifiedTokenName(dataDto.getIsModifiedTokenName())
+                .onlyGif(dataDto.getOnlyGif())
+                .createdAt(new Date()).updatedAt(new Date()).build();
+        collectionInfoRepository.save(info);
+
+        return collection;
     }
 
-    @Transactional
+    public void storeFailedIds(String collectionId, String ids) {
+        CollectionInfo info = collectionInfoRepository.findByCollectionId(new ObjectId(collectionId));
+        info.setFailedIds(ids);
+        collectionInfoRepository.save(info);
+    }
+
+    @Transactional(isolation = REPEATABLE_READ)
     public <T extends AbstractTokenDto> void storeToken(String collectionId, T tokenDataDto) {
         List<ObjectId> attributes;
         if (tokenDataDto instanceof TokenDataFormattedDto) {
@@ -143,12 +145,9 @@ public class DBService {
         tokenRepository.deleteAllByParentCollection(new ObjectId(id));
         metadataRepository.deleteAllByParentCollection(new ObjectId(id));
         attributeRepository.deleteAllByParentCollection(new ObjectId(id));
+        collectionInfoRepository.deleteByCollectionId(new ObjectId(id));
 
         collectionRepository.deleteById(id);
-    }
-
-    public void deleteAttributes(String id) {
-        attributeRepository.deleteAllByParentCollection(new ObjectId(id));
     }
 
     private List<ObjectId> storeAttributes(String collectionId, List<AttributeDto> attributes) {
