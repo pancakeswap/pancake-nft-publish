@@ -24,7 +24,7 @@ public class ListFailedTokens {
         this.collectionInfoRepository = collectionInfoRepository;
     }
 
-    @Scheduled(fixedDelay = 1000 * 60, initialDelay = 0)
+    @Scheduled(fixedDelay = 1000 * 60 * 10, initialDelay = 1000 * 60 * 5)
     public void updateTokens() {
         log.info("updateTokens started");
         for (Collection collection: collectionRepository.findAll()) {

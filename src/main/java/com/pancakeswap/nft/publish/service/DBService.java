@@ -146,6 +146,7 @@ public class DBService {
         metadataRepository.deleteAllByParentCollection(new ObjectId(id));
         attributeRepository.deleteAllByParentCollection(new ObjectId(id));
         collectionInfoRepository.deleteByCollectionId(new ObjectId(id));
+        collectionInfoRepository.deleteByCollectionId(new ObjectId(id));
 
         collectionRepository.deleteById(id);
     }

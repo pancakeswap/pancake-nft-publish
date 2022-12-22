@@ -62,7 +62,7 @@ public class CollectionController {
         if (isValidToken(token)) {
             if (bucket.tryConsume(1)) {
                 try {
-//                    dbService.deleteCollection(id);
+                    dbService.deleteCollection(id);
                     return ResponseEntity.ok("Done");
                 } catch (Exception ex) {
                     throw new ListingException("Failed to list collection");

@@ -32,7 +32,7 @@ public class UpdateNewMintedTokens {
         this.blockChainService = blockChainService;
     }
 
-    @Scheduled(fixedDelay = 1000 * 60, initialDelay = 0)
+    @Scheduled(fixedDelay = 1000 * 60 * 60, initialDelay = 0)
     public void updateCollections() throws ExecutionException, InterruptedException {
         log.info("updateCollections started");
         for (Collection collection :  collectionRepository.findAll()) {
