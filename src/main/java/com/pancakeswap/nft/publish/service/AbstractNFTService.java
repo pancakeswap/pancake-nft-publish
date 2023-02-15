@@ -44,7 +44,7 @@ public abstract class AbstractNFTService {
                 params.setTokenId(tokenId);
                 loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
             } catch (Exception e) {
-                log.error("failed to store token id: {}, collectionId: {}", tokenId, collectionId, e);
+                log.error("failed to store token id: {}, collectionId: {}. Error: {}", tokenId, collectionId, e.getMessage());
             }
         });
         postListActions(config, collectionId);

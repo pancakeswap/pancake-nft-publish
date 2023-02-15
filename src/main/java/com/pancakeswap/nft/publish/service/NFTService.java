@@ -11,9 +11,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigInteger;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
-import static com.pancakeswap.nft.publish.util.FutureUtils.waitFutureRequestFinished;
 import static com.pancakeswap.nft.publish.util.GsonUtil.parseBody;
 import static com.pancakeswap.nft.publish.util.UrlUtil.getIpfsFormattedUrl;
 
@@ -51,7 +49,7 @@ public class NFTService extends AbstractNFTService {
 
                 loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
             } catch (Exception e) {
-                log.error("failed to store token id: {}, url: {}, collectionId: {}", i, url, collection.getId(), e);
+                log.error("failed to store token id: {}, url: {}, collectionId: {}. Error message: {}", i, url, collection.getId(), e.getMessage());
             }
             i++;
         }
@@ -79,7 +77,7 @@ public class NFTService extends AbstractNFTService {
                 loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
             } catch (Exception e) {
                 config.addFailedTokenId(String.valueOf(i));
-                log.error("failed to store token id: {}, url: {}, collectionId: {}", i, url, collectionId, e);
+                log.error("failed to store token id: {}, url: {}, collectionId: {}. Error message: {}", i, url, collectionId, e.getMessage());
             }
         }
 
@@ -111,7 +109,7 @@ public class NFTService extends AbstractNFTService {
                 if (tokenId != null) {
                     config.addFailedTokenId(tokenId.toString());
                 }
-                log.error("failed to store token index: {}, id: {}, url: {}, collectionId: {}", i, tokenId, url, collectionId, e);
+                log.error("failed to store token index: {}, id: {}, url: {}, collectionId: {}. Error message: {}", i, tokenId, url, collectionId, e.getMessage());
             }
         }
 
