@@ -29,6 +29,10 @@ public class CollectionInfo {
     private Boolean onlyGif;
     @NotNull
     private Boolean isModifiedTokenName;
+    @NotNull
+    private CollectionType type;
+    @NotNull
+    private Boolean isCron;
     private String failedIds;
 
     @Field("created_at")

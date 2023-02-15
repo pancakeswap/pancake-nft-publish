@@ -44,9 +44,23 @@ public class CollectionController {
                 try {
                     FutureConfig config = FutureConfig.init();
                     nftService.storeAvatarAndBanner(config, dataDto.getAddress(), dataDto.getAvatarUrl(), dataDto.getBannerUrl());
-                    String result = nftService.listNFT(config, dataDto, 0);
+                    String result;
+                    switch (dataDto.getType()) {
+                        case ENUMERABLE:
+                            result = nftService.listNFT(config, dataDto, 0);
+                            break;
+                        case NO_ENUMERABLE:
+                            result = nftService.listNoEnumerableNFT(config, dataDto, dataDto.getStartIndex() != null ? dataDto.getStartIndex() : 0);
+                            break;
+                        case NO_ENUMERABLE_INFINITE:
+                            result = nftService.listNoEnumerableInfiniteNFT(config, dataDto, dataDto.getStartIndex() != null ? dataDto.getStartIndex() : 0);
+                            break;
+                        default:
+                            result = "CollectionType not found";
+                    }
                     return ResponseEntity.ok(result);
                 } catch (Exception ex) {
+                    System.out.println(ex.getMessage());
                     throw new ListingException("Failed to list collection");
                 }
             }

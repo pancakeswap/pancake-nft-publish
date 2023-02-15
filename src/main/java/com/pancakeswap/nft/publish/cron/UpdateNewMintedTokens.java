@@ -32,18 +32,28 @@ public class UpdateNewMintedTokens {
         this.blockChainService = blockChainService;
     }
 
-    @Scheduled(fixedDelay = 1000 * 60 * 60, initialDelay = 0)
+    @Scheduled(fixedDelay = 1000 * 60 * 60, initialDelay = 1000 * 60 * 30)
     public void updateCollections() throws ExecutionException, InterruptedException {
         log.info("updateCollections started");
-        for (Collection collection :  collectionRepository.findAll()) {
+        for (Collection collection : collectionRepository.findAll()) {
+            log.info(collection.getAddress());
             CollectionInfo info = collectionInfoRepository.findByCollectionId(new ObjectId(collection.getId()));
-            BigInteger totalSupply = blockChainService.getTotalSupply(collection.getAddress());
-            if (info != null && totalSupply.intValue() > collection.getTotalSupply()) {
-                System.out.println("Found new minted. Collection: " + collection.getAddress());
+            if (info != null && info.getIsCron()) {
                 FutureConfig config = FutureConfig.init();
-                nftService.listNFT(config, from(collection, info), collection.getTotalSupply() - 1);
-                collection.setTotalSupply(totalSupply.intValue());
-                collectionRepository.save(collection);
+                switch (info.getType()) {
+                    case ENUMERABLE:
+                        BigInteger totalSupply = blockChainService.getTotalSupply(collection.getAddress());
+                        if (totalSupply.intValue() > collection.getTotalSupply()) {
+                            System.out.println("Found new minted. Collection: " + collection.getAddress());
+                            nftService.listNFT(config, from(collection, info), collection.getTotalSupply() - 1);
+                            collection.setTotalSupply(totalSupply.intValue());
+                            collectionRepository.save(collection);
+                        }
+                        break;
+                    case NO_ENUMERABLE_INFINITE:
+                        nftService.listNoEnumerableInfiniteNFT(config, from(collection, info), collection.getTotalSupply());
+                        break;
+                }
             }
         }
         log.info("updateCollections ended");

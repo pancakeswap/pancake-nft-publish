@@ -9,6 +9,7 @@ import java.math.BigInteger;
 import java.net.http.HttpResponse;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static com.pancakeswap.nft.publish.util.FutureUtils.waitFutureRequestFinished;
 import static com.pancakeswap.nft.publish.util.UrlUtil.getIpfsFormattedUrl;
@@ -37,19 +38,16 @@ public abstract class AbstractNFTService {
 
         String collectionId = dbService.getCollection(collectionAddress).getId();
 
-        ListCollectionTokenParams params = new ListCollectionTokenParams(collectionId, collectionAddress);
-
         Arrays.asList(tokenIds).forEach(tokenId -> {
-            String url = null;
             try {
+                ListCollectionTokenParams params = new ListCollectionTokenParams(collectionId, collectionAddress);
                 params.setTokenId(tokenId);
                 loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
             } catch (Exception e) {
-                log.error("failed to store token id: {}, url: {}, collectionId: {}", tokenId, url, collectionId, e);
+                log.error("failed to store token id: {}, collectionId: {}", tokenId, collectionId, e);
             }
         });
-        waitFutureRequestFinished(config);
-        log.info("fetching tokens finished");
+        postListActions(config, collectionId);
     }
 
     protected abstract void loadAndStoreTokenData(FutureConfig config, String body, ListCollectionTokenParams params);
@@ -57,8 +55,11 @@ public abstract class AbstractNFTService {
     protected void loadAndStoreTokenDataAsync(FutureConfig config, ListCollectionTokenParams params, AtomicInteger attempt) {
         config.addFuture(() -> {
             try {
-                String url = getIpfsFormattedUrl(blockChainService.getTokenURI(params.getCollectionAddress(), new BigInteger(params.getTokenId())));
-                params.setTokenUrl(url);
+                String url = params.getTokenUrl();
+                if (url == null) {
+                    url = getIpfsFormattedUrl(blockChainService.getTokenURI(params.getCollectionAddress(), new BigInteger(params.getTokenId())));
+                    params.setTokenUrl(url);
+                }
 
                 if (tokenResponse.get(url) != null) {
                     loadAndStoreTokenData(config, tokenResponse.get(url), params);
@@ -76,6 +77,7 @@ public abstract class AbstractNFTService {
                     }
                 }
             } catch (Exception ex) {
+                config.addFailedTokenId(params.getTokenId());
                 log.error("failed to store token index: {}, id: {}, collectionId: {}", params.getTokenId(), params.getCollectionId(), ex.getMessage());
             }
         });
@@ -89,6 +91,19 @@ public abstract class AbstractNFTService {
             config.addFailedTokenId(params.getTokenId());
             log.error("Can not fetch token data from: {}. Token id: {}. Attempt: {}. Error message: {}", params.getTokenUrl(), params.getTokenId(), attemptValue, failReason);
         }
+    }
+
+    protected String postListActions(FutureConfig config, String collectionId) {
+        waitFutureRequestFinished(config);
+        log.info("fetching tokens finished");
+
+        if (!config.getTokenIdsFailed().isEmpty()) {
+            String failedIds = config.getTokenIdsFailed().stream().sorted(Comparator.comparing(Integer::valueOf)).collect(Collectors.joining(","));
+            dbService.storeFailedIds(collectionId, failedIds);
+            return "List of failed tokens IDs:" + failedIds;
+        }
+
+        return null;
     }
 
     @Getter

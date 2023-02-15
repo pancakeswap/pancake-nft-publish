@@ -1,5 +1,6 @@
 package com.pancakeswap.nft.publish.model.dto.collection;
 
+import com.pancakeswap.nft.publish.model.entity.CollectionType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -24,5 +25,14 @@ public class CollectionDataDto extends CollectionImageDto {
     private Boolean onlyGif;
     @NotNull
     private Boolean isModifiedTokenName;
+
+    @NotNull
+    private CollectionType type;
+
+    @NotNull
+    private Boolean isCron;
+    private Integer startIndex;
+    private Integer totalSupply;
+
 
 }

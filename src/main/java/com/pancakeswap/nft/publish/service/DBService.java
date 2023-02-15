@@ -36,7 +36,11 @@ public class DBService {
         return collectionRepository.findByAddress(collectionAddress.toLowerCase(Locale.ROOT));
     }
 
-    public Collection storeCollection(CollectionDataDto dataDto, Integer totalSupply) {
+    public Collection storeCollection(Collection collection) {
+        return collectionRepository.save(collection);
+    }
+
+    public Collection storeCollectionIfNotExist(CollectionDataDto dataDto, Integer totalSupply) {
         Collection collection = getCollection(dataDto.getAddress());
         if (collection != null) {
             return collection;
@@ -58,6 +62,8 @@ public class DBService {
                 .collectionId(new ObjectId(collection.getId()))
                 .isModifiedTokenName(dataDto.getIsModifiedTokenName())
                 .onlyGif(dataDto.getOnlyGif())
+                .type(dataDto.getType())
+                .isCron(dataDto.getIsCron())
                 .createdAt(new Date()).updatedAt(new Date()).build();
         collectionInfoRepository.save(info);
 
