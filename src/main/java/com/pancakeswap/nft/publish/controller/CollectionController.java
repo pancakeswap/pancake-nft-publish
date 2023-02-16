@@ -41,27 +41,31 @@ public class CollectionController {
                                                  @RequestHeader(value = "x-secure-token") String token) {
         if (isValidToken(token)) {
             if (bucket.tryConsume(1)) {
-                try {
-                    FutureConfig config = FutureConfig.init();
-                    nftService.storeAvatarAndBanner(config, dataDto.getAddress(), dataDto.getAvatarUrl(), dataDto.getBannerUrl());
-                    String result;
-                    switch (dataDto.getType()) {
-                        case ENUMERABLE:
-                            result = nftService.listNFT(config, dataDto, 0);
-                            break;
-                        case NO_ENUMERABLE:
-                            result = nftService.listNoEnumerableNFT(config, dataDto, dataDto.getStartIndex() != null ? dataDto.getStartIndex() : 0);
-                            break;
-                        case NO_ENUMERABLE_INFINITE:
-                            result = nftService.listNoEnumerableInfiniteNFT(config, dataDto, dataDto.getStartIndex() != null ? dataDto.getStartIndex() : 0);
-                            break;
-                        default:
-                            result = "CollectionType not found";
+                if (dbService.getCollection(dataDto.getAddress()) != null) {
+                    try {
+                        FutureConfig config = FutureConfig.init();
+                        nftService.storeAvatarAndBanner(config, dataDto.getAddress(), dataDto.getAvatarUrl(), dataDto.getBannerUrl());
+                        String result;
+                        switch (dataDto.getType()) {
+                            case ENUMERABLE:
+                                result = nftService.listNFT(config, dataDto, 0);
+                                break;
+                            case NO_ENUMERABLE:
+                                result = nftService.listNoEnumerableNFT(config, dataDto, dataDto.getStartIndex() != null ? dataDto.getStartIndex() : 0);
+                                break;
+                            case NO_ENUMERABLE_INFINITE:
+                                result = nftService.listNoEnumerableInfiniteNFT(config, dataDto, dataDto.getStartIndex() != null ? dataDto.getStartIndex() : 0);
+                                break;
+                            default:
+                                result = "CollectionType not found";
+                        }
+                        return ResponseEntity.ok(result);
+                    } catch (Exception ex) {
+                        System.out.println(ex.getMessage());
+                        throw new ListingException("Failed to list collection");
                     }
-                    return ResponseEntity.ok(result);
-                } catch (Exception ex) {
-                    System.out.println(ex.getMessage());
-                    throw new ListingException("Failed to list collection");
+                } else {
+                    return ResponseEntity.badRequest().body("Collection already exist");
                 }
             }
 
