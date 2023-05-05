@@ -3,6 +3,7 @@ package com.pancakeswap.nft.publish.controller;
 import com.pancakeswap.nft.publish.config.FutureConfig;
 import com.pancakeswap.nft.publish.exception.ListingException;
 import com.pancakeswap.nft.publish.model.dto.collection.CollectionDataDto;
+import com.pancakeswap.nft.publish.service.BunnyNFTService;
 import com.pancakeswap.nft.publish.service.DBService;
 import com.pancakeswap.nft.publish.service.NFTService;
 import io.github.bucket4j.Bandwidth;
@@ -23,12 +24,14 @@ public class CollectionController {
     public String accessToken;
 
     private final NFTService nftService;
+    private final BunnyNFTService bunnyNftService;
     private final DBService dbService;
 
     private final Bucket bucket;
 
-    public CollectionController(NFTService nftService, DBService dbService) {
+    public CollectionController(NFTService nftService, BunnyNFTService bunnyNftService, DBService dbService) {
         this.nftService = nftService;
+        this.bunnyNftService = bunnyNftService;
         this.dbService = dbService;
         Bandwidth limit = Bandwidth.classic(20, Refill.greedy(20, Duration.ofMinutes(1)));
         this.bucket = Bucket.builder()
@@ -60,6 +63,29 @@ public class CollectionController {
                                 result = "CollectionType not found";
                         }
                         return ResponseEntity.ok(result);
+                    } catch (Exception ex) {
+                        System.out.println(ex.getMessage());
+                        throw new ListingException("Failed to list collection");
+                    }
+                } else {
+                    return ResponseEntity.badRequest().body("Collection already exist");
+                }
+            }
+
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
+        }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+
+    @PostMapping(path = "/bunny/collections/{address}")
+    public ResponseEntity<String> addBunnyNFt(@PathVariable("address") String address,
+                                              @RequestHeader(value = "x-secure-token") String token) {
+        if (isValidToken(token)) {
+            if (bucket.tryConsume(1)) {
+                if (dbService.getCollection(address) != null) {
+                    try {
+                        bunnyNftService.listOnlyOnePerBunnyID(address);
+                        return ResponseEntity.ok("ListOnlyOnePerBunnyID finished");
                     } catch (Exception ex) {
                         System.out.println(ex.getMessage());
                         throw new ListingException("Failed to list collection");
