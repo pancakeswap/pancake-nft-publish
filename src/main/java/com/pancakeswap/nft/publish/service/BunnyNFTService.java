@@ -31,14 +31,13 @@ public class BunnyNFTService extends AbstractNFTService {
 
     public void listOnlyOnePerBunnyID(String collectionAddress) throws ExecutionException, InterruptedException {
         log.info("fetching tokens started");
-        int lastAddedBunnyId = 24;
+        int lastAddedBunnyId = 27;
 
         FutureConfig config = FutureConfig.init();
 
         BigInteger totalSupply = blockChainService.getTotalSupply(collectionAddress);
         Collection collection = dbService.getCollection(collectionAddress);
 
-        ListCollectionTokenParams params = new ListCollectionTokenParams(collection.getId(), collection.getAddress());
 
         for (int i = lastIndex; i < totalSupply.intValue(); i++) {
             BigInteger tokenId = null;
@@ -46,11 +45,13 @@ public class BunnyNFTService extends AbstractNFTService {
             try {
                 tokenId = blockChainService.getTokenId(collectionAddress, i);
                 bunnyID = blockChainService.getBunnyId(collectionAddress, tokenId);
+                ListCollectionTokenParams params = new ListCollectionTokenParams(collection.getId(), collection.getAddress());
 
                 params.setTokenId(tokenId.toString());
                 if (bunnyID.intValue() > lastAddedBunnyId) {
                     loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
                     lastAddedBunnyId = bunnyID.intValue();
+                    log.info("added new bunny. id: {}", bunnyID.intValue());
                 }
             } catch (Exception e) {
                 if (tokenId != null) {
@@ -72,12 +73,12 @@ public class BunnyNFTService extends AbstractNFTService {
         BigInteger totalSupply = blockChainService.getTotalSupply(dataDto.getAddress());
         Collection collection = dbService.getCollection(dataDto.getAddress());
 
-        ListCollectionTokenParams params = new ListCollectionTokenParams(collection.getId(), collection.getAddress());
-
         for (int i = lastIndex; i < totalSupply.intValue(); i++) {
             BigInteger tokenId = null;
             try {
                 tokenId = blockChainService.getTokenId(dataDto.getAddress(), i);
+
+                ListCollectionTokenParams params = new ListCollectionTokenParams(collection.getId(), collection.getAddress());
                 params.setTokenId(tokenId.toString());
 
                 loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
@@ -100,13 +101,12 @@ public class BunnyNFTService extends AbstractNFTService {
 
         Collection collection = dbService.getCollection(collectionAddress);
 
-        ListCollectionTokenParams params = new ListCollectionTokenParams(collection.getId(), collection.getAddress());
-
         tokenIds.forEach(i -> {
             String url = null;
             BigInteger tokenId = null;
-
             try {
+                ListCollectionTokenParams params = new ListCollectionTokenParams(collection.getId(), collection.getAddress());
+
                 tokenId = blockChainService.getTokenId(collectionAddress, i);
                 url = getIpfsFormattedUrl(blockChainService.getTokenURI(collectionAddress, tokenId));
 
@@ -115,7 +115,7 @@ public class BunnyNFTService extends AbstractNFTService {
 
                 loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
             } catch (Exception e) {
-                log.error("failed to store token id: {}, url: {}, collectionId: {}", params.getTokenId(), params.getTokenUrl(), params.getCollectionId(), e);
+                log.error("failed to store token id: {}, url: {}, collectionId: {}", tokenId, url, collection.getId(), e);
             }
         });
         waitFutureRequestFinished(config);
@@ -127,7 +127,6 @@ public class BunnyNFTService extends AbstractNFTService {
         try {
             AbstractTokenDto tokenData = parseBody(body);
             tokenData.setTokenId(params.getTokenId());
-//            storeTokenImage(tokenData);
             storeBunnyTokenData(config, params.getCollectionId(), tokenData);
         } catch (Exception ex) {
             config.addFailedTokenId(params.getTokenId());
