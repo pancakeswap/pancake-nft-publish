@@ -19,6 +19,7 @@ public class TokenDataService {
     public TokenDataService() {
         client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(2))
+                .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
     }
 
