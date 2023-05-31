@@ -44,7 +44,7 @@ public class CollectionController {
                                                  @RequestHeader(value = "x-secure-token") String token) {
         if (isValidToken(token)) {
             if (bucket.tryConsume(1)) {
-                if (dbService.getCollection(dataDto.getAddress()) != null) {
+                if (dbService.getCollection(dataDto.getAddress()) == null) {
                     try {
                         FutureConfig config = FutureConfig.init();
                         nftService.storeAvatarAndBanner(config, dataDto.getAddress(), dataDto.getAvatarUrl(), dataDto.getBannerUrl());
@@ -82,7 +82,7 @@ public class CollectionController {
                                               @RequestHeader(value = "x-secure-token") String token) {
         if (isValidToken(token)) {
             if (bucket.tryConsume(1)) {
-                if (dbService.getCollection(address) != null) {
+                if (dbService.getCollection(address) == null) {
                     try {
                         bunnyNftService.listOnlyOnePerBunnyID(address);
                         return ResponseEntity.ok("ListOnlyOnePerBunnyID finished");
