@@ -1,10 +1,14 @@
 package com.pancakeswap.nft.publish.service;
 
-import com.pancakeswap.nft.publish.model.dto.*;
+import com.pancakeswap.nft.publish.model.dto.AbstractTokenDto;
+import com.pancakeswap.nft.publish.model.dto.AttributeDto;
+import com.pancakeswap.nft.publish.model.dto.TokenDataFormattedDto;
+import com.pancakeswap.nft.publish.model.dto.TokenDataNoFormattedDto;
 import com.pancakeswap.nft.publish.model.dto.collection.CollectionDataDto;
-import com.pancakeswap.nft.publish.model.entity.*;
 import com.pancakeswap.nft.publish.model.entity.Collection;
+import com.pancakeswap.nft.publish.model.entity.*;
 import com.pancakeswap.nft.publish.repository.*;
+import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +19,7 @@ import java.util.stream.Collectors;
 import static org.springframework.transaction.annotation.Isolation.REPEATABLE_READ;
 
 @Service
+@RequiredArgsConstructor
 public class DBService {
     private final CollectionRepository collectionRepository;
     private final AttributeRepository attributeRepository;
@@ -23,14 +28,6 @@ public class DBService {
     private final CollectionInfoRepository collectionInfoRepository;
 
     private final Map<String, String> attributesMapCache = Collections.synchronizedMap(new HashMap<>());
-
-    public DBService(CollectionRepository collectionRepository, AttributeRepository attributeRepository, TokenRepository tokenRepository, MetadataRepository metadataRepository, CollectionInfoRepository collectionInfoRepository) {
-        this.collectionRepository = collectionRepository;
-        this.attributeRepository = attributeRepository;
-        this.tokenRepository = tokenRepository;
-        this.metadataRepository = metadataRepository;
-        this.collectionInfoRepository = collectionInfoRepository;
-    }
 
     public Collection getCollection(String collectionAddress) {
         return collectionRepository.findByAddress(collectionAddress.toLowerCase(Locale.ROOT));
@@ -212,5 +209,18 @@ public class DBService {
         metadata.setUpdatedAt(new Date());
 
         return metadataRepository.save(metadata);
+    }
+
+    @Transactional
+    public void storeTokenAttribute(Attribute attributeToSave, String value, String traitType) {
+        Attribute attribute = new Attribute();
+        attribute.setParentCollection(attributeToSave.getParentCollection());
+        attribute.setTraitType(traitType);
+        attribute.setValue(value);
+
+        attribute.setCreatedAt(new Date());
+        attribute.setUpdatedAt(new Date());
+
+        attributeRepository.save(attribute);
     }
 }
