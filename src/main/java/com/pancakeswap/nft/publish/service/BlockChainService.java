@@ -16,6 +16,7 @@ import org.web3j.protocol.core.methods.response.EthCall;
 import org.web3j.protocol.http.HttpService;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -87,12 +88,22 @@ public class BlockChainService {
         return (String) res.get(0).getValue();
     }
 
+    //TODO: broken
     public List<Type> getNftInfo(String collectionAddress, BigInteger tokenId) throws ExecutionException, InterruptedException {
-        Function function = new Function(
-                "getNftInfo",
-                List.of(new Uint(tokenId)),
-                List.of(new TypeReference<Utf8String>() {
-                }));
+        List<Type> inputParameters = List.of(new Uint(tokenId));
+        List<TypeReference<?>> outputParameters = new ArrayList<>();
+        TypeReference<Uint> prototype = new TypeReference<>() {
+        };
+        TypeReference<Uint> quality = new TypeReference<>() {
+        };
+        TypeReference<Uint> lv = new TypeReference<>() {
+        };
+        // TODO: this is kinda wierd... should store parameter name instead of SC type (e.g. prototype VS uint256)
+        outputParameters.add(prototype);
+        outputParameters.add(quality);
+        outputParameters.add(lv);
+
+        Function function = new Function("getNftInfo", inputParameters, outputParameters);
 
         List<Type> response = callBlockchainFunction(collectionAddress, function);
         if (response.isEmpty()) {
