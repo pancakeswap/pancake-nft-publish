@@ -18,16 +18,18 @@ public class UpdateMoboxTokenLvl {
     private final DBService dbService;
     private final MoboxTokenService moboxTokenService;
 
-    @Scheduled(fixedDelay = 1000 * 60 * 60, initialDelay = 0)
+    @Scheduled(fixedDelay = 1000 * 60 * 15, initialDelay = 0)
     public void updateLvl() {
         Collection moboxCollection = dbService.getCollection(MOBOX_COLLECTION_ADDRESS);
-        try {
-            log.info("Mobox tokens lvl update started");
-            moboxTokenService.updateLevels(moboxCollection);
-            log.info("Mobox tokens lvl update ended");
-        } catch (Exception ex) {
-            log.error(ex.getMessage());
-            throw new ListingException("Failed to update Mobox tokens lvl");
+        if (moboxCollection != null) {
+            try {
+                log.info("Mobox tokens lvl update started");
+                moboxTokenService.updateLevels(moboxCollection);
+                log.info("Mobox tokens lvl update ended");
+            } catch (Exception ex) {
+                log.error(ex.getMessage());
+                throw new ListingException("Failed to update Mobox tokens lvl");
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.pancakeswap.nft.publish.service;
 
+import com.pancakeswap.nft.publish.model.sc.NftInfo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.web3j.abi.FunctionEncoder;
@@ -16,7 +17,6 @@ import org.web3j.protocol.core.methods.response.EthCall;
 import org.web3j.protocol.http.HttpService;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -88,28 +88,25 @@ public class BlockChainService {
         return (String) res.get(0).getValue();
     }
 
-    //TODO: broken
-    public List<Type> getNftInfo(String collectionAddress, BigInteger tokenId) throws ExecutionException, InterruptedException {
-        List<Type> inputParameters = List.of(new Uint(tokenId));
-        List<TypeReference<?>> outputParameters = new ArrayList<>();
-        TypeReference<Uint> prototype = new TypeReference<>() {
-        };
-        TypeReference<Uint> quality = new TypeReference<>() {
-        };
-        TypeReference<Uint> lv = new TypeReference<>() {
-        };
-        // TODO: this is kinda wierd... should store parameter name instead of SC type (e.g. prototype VS uint256)
-        outputParameters.add(prototype);
-        outputParameters.add(quality);
-        outputParameters.add(lv);
-
-        Function function = new Function("getNftInfo", inputParameters, outputParameters);
+    public NftInfo getNftInfo(String collectionAddress, BigInteger tokenId) throws ExecutionException, InterruptedException {
+        Function function = new Function("getNftInfo",
+                List.of(new Uint(tokenId)),
+                List.of(new TypeReference<Uint>() {
+                }, new TypeReference<Uint>() {
+                }, new TypeReference<Uint>() {
+                }));
 
         List<Type> response = callBlockchainFunction(collectionAddress, function);
-        if (response.isEmpty()) {
+        if (response.size() != 3) {
             throw new RuntimeException("Decoded response is empty");
         }
-        return response;
+
+        NftInfo info = new NftInfo(
+                (BigInteger) response.get(0).getValue(),
+                (BigInteger) response.get(1).getValue(),
+                (BigInteger) response.get(2).getValue());
+
+        return info;
     }
 
     private List<Type> callBlockchainFunction(String collectionAddress, Function function) throws ExecutionException, InterruptedException {

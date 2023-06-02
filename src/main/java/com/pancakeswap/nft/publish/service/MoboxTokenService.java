@@ -3,13 +3,13 @@ package com.pancakeswap.nft.publish.service;
 import com.pancakeswap.nft.publish.model.entity.Attribute;
 import com.pancakeswap.nft.publish.model.entity.Collection;
 import com.pancakeswap.nft.publish.model.entity.Token;
+import com.pancakeswap.nft.publish.model.sc.NftInfo;
 import com.pancakeswap.nft.publish.repository.AttributeRepository;
 import com.pancakeswap.nft.publish.repository.TokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
-import org.web3j.abi.datatypes.Type;
 
 import java.math.BigInteger;
 import java.util.List;
@@ -41,13 +41,12 @@ public class MoboxTokenService {
             Optional<Attribute> levelAttributeFromDB = attributeRepository.findFirstByIdInAndTraitType(attributesId, LEVEL_ATTRIBUTE);
             if (levelAttributeFromDB.isPresent()) {
                 try {
-                    List<Type> nftInfo = blockChainService.getNftInfo(collectionAddress, new BigInteger(token.getTokenId()));
-                    String tokenLvlFromChain = getTokenLevel(nftInfo);
+                    NftInfo nftInfo = blockChainService.getNftInfo(collectionAddress, new BigInteger(token.getTokenId()));
                     Attribute tokenLevelAttribute = levelAttributeFromDB.get();
                     String tokenLvlFromDB = tokenLevelAttribute.getValue();
-                    log.info(String.format("TMP: tokenLvlFromChain: %s, tokenLvlFromDB: %s", tokenLvlFromChain, tokenLvlFromDB));
-                    if (!tokenLvlFromDB.equals(tokenLvlFromChain)) {
-                        dbService.storeTokenAttribute(tokenLevelAttribute, tokenLvlFromChain, LEVEL_ATTRIBUTE);
+                    log.info(String.format("TMP: tokenLvlFromChain: %s, tokenLvlFromDB: %s", nftInfo.getLv().toString(), tokenLvlFromDB));
+                    if (!tokenLvlFromDB.equals(nftInfo.getLv().toString())) {
+                        dbService.storeTokenAttribute(tokenLevelAttribute, nftInfo.getLv().toString(), LEVEL_ATTRIBUTE);
                     }
                 } catch (Exception e) {
                     throw new RuntimeException(e);
@@ -56,13 +55,5 @@ public class MoboxTokenService {
                 throw new RuntimeException(String.format("Missing attribute: '%s' for token: %s", LEVEL_ATTRIBUTE, token));
             }
         });
-    }
-
-    private String getTokenLevel(List<Type> nftInfo) {
-        return nftInfo.stream()
-                .filter(type -> type.getTypeAsString().equals(LEVEL_ATTRIBUTE))
-                .map(Type::getValue)
-                .collect(Collectors.toList())
-                .get(0).toString(); // should always be only one LEVEL_ATTRIBUTE for token
     }
 }
