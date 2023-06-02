@@ -14,7 +14,6 @@ import com.pancakeswap.nft.publish.exception.ImageLoadException;
 import com.pancakeswap.nft.publish.model.dto.AbstractTokenDto;
 import lombok.extern.slf4j.Slf4j;
 import org.imgscalr.Scalr;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.web3j.crypto.Keys;
@@ -26,6 +25,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.util.AbstractMap;
 import java.util.Set;
@@ -33,8 +33,8 @@ import java.util.Set;
 import static com.pancakeswap.nft.publish.util.FileNameUtil.formattedTokenName;
 import static com.pancakeswap.nft.publish.util.UrlUtil.getIpfsFormattedUrl;
 
-@Service
 @Slf4j
+@Service
 public class ImageService {
 
     @Value("${aws.access.key}")
@@ -96,24 +96,20 @@ public class ImageService {
                 log.error("failed to upload {}. url: {}, formattedTokenName: {}", metadata, imageUrl, tokenName);
             }
         }
-
     }
 
     private void uploadTokenImages(String collectionAddress, String imageUrl, String tokenName, TokenMetadata metadata) throws IOException {
         switch (metadata) {
-            case PNG:
+            case PNG -> {
                 AbstractMap.SimpleEntry<BufferedImage, BufferedImage> images = getImages(imageUrl);
                 uploadSync(images.getKey(), String.format("%s.png", tokenName), collectionAddress, metadata);
                 uploadSync(images.getValue(), String.format("%s-1000.png", tokenName), collectionAddress, metadata);
-                break;
-            case GIF:
-                uploadAnimatedSync(getImage(imageUrl), String.format("%s.gif", tokenName), collectionAddress, metadata);
-                break;
-            case MP4:
-                uploadAnimatedSync(getImage(imageUrl), String.format("%s.mp4", tokenName), collectionAddress, metadata);
-                break;
+            }
+            case GIF ->
+                    uploadAnimatedSync(getImage(imageUrl), String.format("%s.gif", tokenName), collectionAddress, metadata);
+            case MP4 ->
+                    uploadAnimatedSync(getImage(imageUrl), String.format("%s.mp4", tokenName), collectionAddress, metadata);
         }
-
     }
 
     private AbstractMap.SimpleEntry<BufferedImage, BufferedImage> getImages(String imageUrl) {
@@ -147,7 +143,7 @@ public class ImageService {
         URL original = null;
         for (int i = 0; i < 10; i++) {
             try {
-                original = new URL(imageUrl);
+                original = new URI(imageUrl).toURL();
                 break;
             } catch (Exception ignore) {
             }
@@ -163,6 +159,10 @@ public class ImageService {
         ByteArrayOutputStream outstream = new ByteArrayOutputStream();
         ImageIO.write(image, metadata.getType(), outstream);
         byte[] buffer = outstream.toByteArray();
+        storeMetadataToS3(filename, contract, metadata, buffer);
+    }
+
+    private void storeMetadataToS3(String filename, String contract, TokenMetadata metadata, byte[] buffer) {
         InputStream is = new ByteArrayInputStream(buffer);
         ObjectMetadata meta = new ObjectMetadata();
         meta.setCacheControl("public, max-age= 2592000");
@@ -179,17 +179,7 @@ public class ImageService {
         try (InputStream in = url.openStream()) {
 
             byte[] data = IOUtils.toByteArray(in);
-            InputStream is = new ByteArrayInputStream(data);
-
-            ObjectMetadata meta = new ObjectMetadata();
-            meta.setCacheControl("public, max-age= 2592000");
-            meta.setContentType(metadata.getContentType());
-            meta.setContentLength(data.length);
-
-            PutObjectRequest putObject = new PutObjectRequest(bucket, String.format("%s/%s/%s", "mainnet", Keys.toChecksumAddress(collectionAddress), filename), is, meta)
-                    .withCannedAcl(CannedAccessControlList.PublicRead);
-
-            s3client.putObject(putObject);
+            storeMetadataToS3(filename, collectionAddress, metadata, data);
         }
     }
 
@@ -200,7 +190,6 @@ public class ImageService {
             String resizedImage = String.format("%s/%s/%s-1000.%s", "mainnet", Keys.toChecksumAddress(collectionAddress), formattedTokenName, metadata.getType());
             return exist && s3client.doesObjectExist(bucket, resizedImage);
         }
-
         return exist;
     }
 

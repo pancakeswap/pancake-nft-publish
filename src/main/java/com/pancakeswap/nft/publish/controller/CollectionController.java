@@ -11,14 +11,16 @@ import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.time.Duration;
 
 @RestController
 public class CollectionController {
+
+    private static final String SECURE_TOKEN = "x-secure-token";
 
     @Value(value = "${secure.token}")
     public String accessToken;
@@ -41,7 +43,7 @@ public class CollectionController {
 
     @PostMapping(path = "/collections")
     public ResponseEntity<String> listCollection(@Valid @RequestBody CollectionDataDto dataDto,
-                                                 @RequestHeader(value = "x-secure-token") String token) {
+                                                 @RequestHeader(value = SECURE_TOKEN) String token) {
         if (isValidToken(token)) {
             if (bucket.tryConsume(1)) {
                 if (dbService.getCollection(dataDto.getAddress()) == null) {
@@ -79,7 +81,7 @@ public class CollectionController {
 
     @PostMapping(path = "/bunny/collections/{address}")
     public ResponseEntity<String> addBunnyNFt(@PathVariable("address") String address,
-                                              @RequestHeader(value = "x-secure-token") String token) {
+                                              @RequestHeader(value = SECURE_TOKEN) String token) {
         if (isValidToken(token)) {
             if (bucket.tryConsume(1)) {
                 if (dbService.getCollection(address) == null) {
@@ -102,7 +104,7 @@ public class CollectionController {
 
     @DeleteMapping(path = "/collections/{id}")
     public ResponseEntity<String> deleteCollection(@PathVariable("id") String id,
-                                                   @RequestHeader(value = "x-secure-token") String token) {
+                                                   @RequestHeader(value = SECURE_TOKEN) String token) {
         if (isValidToken(token)) {
             if (bucket.tryConsume(1)) {
                 try {

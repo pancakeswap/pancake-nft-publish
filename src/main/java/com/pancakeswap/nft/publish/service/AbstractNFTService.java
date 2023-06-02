@@ -2,6 +2,7 @@ package com.pancakeswap.nft.publish.service;
 
 import com.pancakeswap.nft.publish.config.FutureConfig;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -15,6 +16,7 @@ import static com.pancakeswap.nft.publish.util.FutureUtils.waitFutureRequestFini
 import static com.pancakeswap.nft.publish.util.UrlUtil.getIpfsFormattedUrl;
 
 @Slf4j
+@RequiredArgsConstructor
 public abstract class AbstractNFTService {
 
     protected final ImageService imageService;
@@ -24,12 +26,6 @@ public abstract class AbstractNFTService {
 
     private final Map<String, String> tokenResponse = Collections.synchronizedMap(new HashMap<>());
 
-    public AbstractNFTService(ImageService imageService, DBService dbService, TokenDataService tokenDataService, BlockChainService blockChainService) {
-        this.imageService = imageService;
-        this.dbService = dbService;
-        this.tokenDataService = tokenDataService;
-        this.blockChainService = blockChainService;
-    }
 
     public void relistNft(String collectionAddress, String[] tokenIds) {
         log.info("fetching tokens started");
@@ -108,6 +104,7 @@ public abstract class AbstractNFTService {
 
     @Getter
     @Setter
+    @RequiredArgsConstructor
     static class ListCollectionTokenParams {
         private final String collectionId;
         private final String collectionAddress;
@@ -115,10 +112,5 @@ public abstract class AbstractNFTService {
         private String tokenUrl;
         private Boolean onlyGif;
         private Boolean isModifiedTokenName;
-
-        ListCollectionTokenParams(String collectionId, String collectionAddress) {
-            this.collectionId = collectionId;
-            this.collectionAddress = collectionAddress;
-        }
     }
 }

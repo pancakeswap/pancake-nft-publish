@@ -8,6 +8,7 @@ import com.pancakeswap.nft.publish.repository.CollectionInfoRepository;
 import com.pancakeswap.nft.publish.repository.CollectionRepository;
 import com.pancakeswap.nft.publish.service.BlockChainService;
 import com.pancakeswap.nft.publish.service.NFTService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,9 +16,11 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
-@Component
 @Slf4j
+@Component
+@RequiredArgsConstructor
 public class UpdateNewMintedTokens {
 
     private final NFTService nftService;
@@ -25,14 +28,7 @@ public class UpdateNewMintedTokens {
     private final CollectionInfoRepository collectionInfoRepository;
     private final BlockChainService blockChainService;
 
-    public UpdateNewMintedTokens(NFTService nftService, CollectionRepository collectionRepository, CollectionInfoRepository collectionInfoRepository, BlockChainService blockChainService) {
-        this.nftService = nftService;
-        this.collectionRepository = collectionRepository;
-        this.collectionInfoRepository = collectionInfoRepository;
-        this.blockChainService = blockChainService;
-    }
-
-    @Scheduled(fixedDelay = 1000 * 60 * 60, initialDelay = 1000 * 60 * 30)
+    @Scheduled(fixedDelay = 60, initialDelay = 30, timeUnit = TimeUnit.MINUTES)
     public void updateCollections() throws ExecutionException, InterruptedException {
         log.info("updateCollections started");
         for (Collection collection : collectionRepository.findAll()) {
@@ -41,7 +37,7 @@ public class UpdateNewMintedTokens {
             if (info != null && info.getIsCron()) {
                 FutureConfig config = FutureConfig.init();
                 switch (info.getType()) {
-                    case ENUMERABLE:
+                    case ENUMERABLE -> {
                         BigInteger totalSupply = blockChainService.getTotalSupply(collection.getAddress());
                         if (totalSupply.intValue() > collection.getTotalSupply()) {
                             System.out.println("Found new minted. Collection: " + collection.getAddress());
@@ -49,10 +45,9 @@ public class UpdateNewMintedTokens {
                             collection.setTotalSupply(totalSupply.intValue());
                             collectionRepository.save(collection);
                         }
-                        break;
-                    case NO_ENUMERABLE_INFINITE:
-                        nftService.listNoEnumerableInfiniteNFT(config, from(collection, info), collection.getTotalSupply());
-                        break;
+                    }
+                    case NO_ENUMERABLE_INFINITE ->
+                            nftService.listNoEnumerableInfiniteNFT(config, from(collection, info), collection.getTotalSupply());
                 }
             }
         }
