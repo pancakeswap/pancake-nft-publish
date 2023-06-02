@@ -22,7 +22,7 @@ public class ListFailedTokens {
     private final CollectionRepository collectionRepository;
     private final CollectionInfoRepository collectionInfoRepository;
 
-    @Scheduled(fixedDelay = 1, timeUnit = TimeUnit.HOURS, initialDelay = 0)
+    @Scheduled(fixedDelay = 60, timeUnit = TimeUnit.MINUTES, initialDelay = 1)
     public void updateTokens() {
         log.info("updateTokens started");
         for (Collection collection : collectionRepository.findAll()) {

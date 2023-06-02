@@ -20,7 +20,7 @@ public class UpdateMoboxTokenLvl {
     private final DBService dbService;
     private final MoboxTokenService moboxTokenService;
 
-    @Scheduled(fixedDelay = 15, timeUnit = TimeUnit.MINUTES, initialDelay = 0)
+    @Scheduled(fixedDelay = 15, timeUnit = TimeUnit.MINUTES, initialDelay = 1)
     public void updateLvl() {
         Collection moboxCollection = dbService.getCollection(MOBOX_COLLECTION_ADDRESS);
         if (moboxCollection != null) {
