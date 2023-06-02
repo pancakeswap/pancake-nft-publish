@@ -1,5 +1,6 @@
 package com.pancakeswap.nft.publish.service;
 
+import com.pancakeswap.nft.publish.model.sc.NftInfo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.web3j.abi.FunctionEncoder;
@@ -16,7 +17,6 @@ import org.web3j.protocol.core.methods.response.EthCall;
 import org.web3j.protocol.http.HttpService;
 
 import java.math.BigInteger;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -36,7 +36,7 @@ public class BlockChainService {
         Function function = new Function(
                 "totalSupply",
                 Collections.emptyList(),
-                Arrays.asList(new TypeReference<Uint>() {
+                List.of(new TypeReference<Uint>() {
                 }));
 
         List<Type> res = callBlockchainFunction(collectionAddress, function);
@@ -49,8 +49,8 @@ public class BlockChainService {
     public BigInteger getTokenId(String collectionAddress, Integer index) throws ExecutionException, InterruptedException {
         Function function = new Function(
                 "tokenByIndex",
-                Arrays.asList(new Uint(BigInteger.valueOf(index))),
-                Arrays.asList(new TypeReference<Uint>() {
+                List.of(new Uint(BigInteger.valueOf(index))),
+                List.of(new TypeReference<Uint>() {
                 }));
 
         List<Type> res = callBlockchainFunction(collectionAddress, function);
@@ -63,8 +63,8 @@ public class BlockChainService {
     public BigInteger getBunnyId(String collectionAddress, BigInteger index) throws ExecutionException, InterruptedException {
         Function function = new Function(
                 "getBunnyId",
-                Arrays.asList(new Uint(index)),
-                Arrays.asList(new TypeReference<Uint>() {
+                List.of(new Uint(index)),
+                List.of(new TypeReference<Uint>() {
                 }));
 
         List<Type> res = callBlockchainFunction(collectionAddress, function);
@@ -77,8 +77,8 @@ public class BlockChainService {
     public String getTokenURI(String collectionAddress, BigInteger index) throws ExecutionException, InterruptedException {
         Function function = new Function(
                 "tokenURI",
-                Arrays.asList(new Uint(index)),
-                Arrays.asList(new TypeReference<Utf8String>() {
+                List.of(new Uint(index)),
+                List.of(new TypeReference<Utf8String>() {
                 }));
 
         List<Type> res = callBlockchainFunction(collectionAddress, function);
@@ -86,6 +86,27 @@ public class BlockChainService {
             throw new RuntimeException("Decoded response is empty");
         }
         return (String) res.get(0).getValue();
+    }
+
+    public NftInfo getNftInfo(String collectionAddress, BigInteger tokenId) throws ExecutionException, InterruptedException {
+        Function function = new Function("getNftInfo",
+                List.of(new Uint(tokenId)),
+                List.of(new TypeReference<Uint>() {
+                }, new TypeReference<Uint>() {
+                }, new TypeReference<Uint>() {
+                }));
+
+        List<Type> response = callBlockchainFunction(collectionAddress, function);
+        if (response.size() != 3) {
+            throw new RuntimeException("Decoded response is empty");
+        }
+
+        NftInfo info = new NftInfo(
+                (BigInteger) response.get(0).getValue(),
+                (BigInteger) response.get(1).getValue(),
+                (BigInteger) response.get(2).getValue());
+
+        return info;
     }
 
     private List<Type> callBlockchainFunction(String collectionAddress, Function function) throws ExecutionException, InterruptedException {
