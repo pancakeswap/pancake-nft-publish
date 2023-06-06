@@ -101,12 +101,10 @@ public class BlockChainService {
             throw new RuntimeException("Decoded response is empty");
         }
 
-        NftInfo info = new NftInfo(
+        return new NftInfo(
                 (BigInteger) response.get(0).getValue(),
                 (BigInteger) response.get(1).getValue(),
                 (BigInteger) response.get(2).getValue());
-
-        return info;
     }
 
     private List<Type> callBlockchainFunction(String collectionAddress, Function function) throws ExecutionException, InterruptedException {

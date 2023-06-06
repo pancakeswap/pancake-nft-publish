@@ -9,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.concurrent.TimeUnit;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -18,7 +20,7 @@ public class UpdateMoboxTokenLvl {
     private final DBService dbService;
     private final MoboxTokenService moboxTokenService;
 
-    @Scheduled(fixedDelay = 1000 * 60 * 15, initialDelay = 0)
+    @Scheduled(fixedDelay = 15, timeUnit = TimeUnit.MINUTES, initialDelay = 0)
     public void updateLvl() {
         Collection moboxCollection = dbService.getCollection(MOBOX_COLLECTION_ADDRESS);
         if (moboxCollection != null) {

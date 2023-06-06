@@ -19,8 +19,16 @@ import static com.pancakeswap.nft.publish.util.UrlUtil.getIpfsFormattedUrl;
 @Slf4j
 public class NFTService extends AbstractNFTService {
 
-    public NFTService(BlockChainService blockChainService, TokenDataService tokenDataService, ImageService imageService, DBService dbService) {
-        super(imageService, dbService, tokenDataService, blockChainService);
+    public NFTService(
+            BlockChainService blockChainService,
+            TokenDataService tokenDataService,
+            ImageService imageService,
+            DBService dbService) {
+        super(
+                imageService,
+                dbService,
+                tokenDataService,
+                blockChainService);
     }
 
     //TODO: Test on real data

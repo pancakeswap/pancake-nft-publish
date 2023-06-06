@@ -75,16 +75,9 @@ public class DBService {
 
     @Transactional(isolation = REPEATABLE_READ)
     public <T extends AbstractTokenDto> void storeToken(String collectionId, T tokenDataDto) {
-        List<ObjectId> attributes;
-        if (tokenDataDto instanceof TokenDataFormattedDto) {
-            TokenDataFormattedDto dto = (TokenDataFormattedDto) tokenDataDto;
-            attributes = storeAttributes(collectionId, dto.getAttributes());
-        } else {
-            TokenDataNoFormattedDto dto = (TokenDataNoFormattedDto) tokenDataDto;
-            attributes = storeAttributes(collectionId, dto.getAttributes().entrySet().stream().map(e -> new AttributeDto(e.getKey(), e.getValue())).collect(Collectors.toList()));
-        }
-
+        List<ObjectId> attributes = getAttributes(collectionId, tokenDataDto);
         Token token = findToken(collectionId, tokenDataDto.getTokenId());
+
         if (token.getMetadata() == null) {
             Metadata metadata = storeMetadata(tokenDataDto, collectionId);
             token.setMetadata(new ObjectId(metadata.getId()));
@@ -109,16 +102,9 @@ public class DBService {
 
     @Transactional
     public <T extends AbstractTokenDto> void storeBunnyToken(String collectionId, T tokenDataDto) {
-        List<ObjectId> attributes;
-        if (tokenDataDto instanceof TokenDataFormattedDto) {
-            TokenDataFormattedDto dto = (TokenDataFormattedDto) tokenDataDto;
-            attributes = storeAttributes(collectionId, dto.getAttributes());
-        } else {
-            TokenDataNoFormattedDto dto = (TokenDataNoFormattedDto) tokenDataDto;
-            attributes = storeAttributes(collectionId, dto.getAttributes().entrySet().stream().map(e -> new AttributeDto(e.getKey(), e.getValue())).collect(Collectors.toList()));
-        }
-
+        List<ObjectId> attributes = getAttributes(collectionId, tokenDataDto);
         Token token = findToken(collectionId, tokenDataDto.getTokenId());
+
         if (token.getMetadata() == null) {
             Metadata metadata = metadataRepository.findByParentCollectionAndName(new ObjectId(collectionId), tokenDataDto.getName())
                     .orElse(storeMetadata(tokenDataDto, collectionId));
@@ -130,6 +116,16 @@ public class DBService {
         token.setAttributes(attributes);
 
         tokenRepository.save(token);
+    }
+
+    private <T extends AbstractTokenDto> List<ObjectId> getAttributes(String collectionId, T tokenDataDto) {
+        if (tokenDataDto instanceof TokenDataFormattedDto) {
+            TokenDataFormattedDto dto = (TokenDataFormattedDto) tokenDataDto;
+            return storeAttributes(collectionId, dto.getAttributes());
+        } else {
+            TokenDataNoFormattedDto dto = (TokenDataNoFormattedDto) tokenDataDto;
+            return storeAttributes(collectionId, dto.getAttributes().entrySet().stream().map(e -> new AttributeDto(e.getKey(), e.getValue())).collect(Collectors.toList()));
+        }
     }
 
     private Token findToken(String collectionId, String tokenId) {
@@ -173,7 +169,7 @@ public class DBService {
 
                     return attr.isEmpty();
                 }
-            }).collect(Collectors.toList());
+            }).toList();
 
             List<Attribute> entities = toStore.stream().map(attributeDto -> {
                 Attribute attribute = new Attribute();
@@ -190,7 +186,7 @@ public class DBService {
             if (entities.size() > 0) {
                 List<Attribute> stored = attributeRepository.saveAll(entities);
                 stored.forEach(a -> attributesMapCache.put(String.format("%s-%s-%s", collectionId, a.getTraitType(), a.getValue()), a.getId()));
-                existed.addAll(stored.stream().map(a -> new ObjectId(a.getId())).collect(Collectors.toList()));
+                existed.addAll(stored.stream().map(a -> new ObjectId(a.getId())).toList());
             }
 
             return existed;

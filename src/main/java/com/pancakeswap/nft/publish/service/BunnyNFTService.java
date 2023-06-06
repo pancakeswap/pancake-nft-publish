@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigInteger;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -18,14 +17,17 @@ import static com.pancakeswap.nft.publish.util.FutureUtils.waitFutureRequestFini
 import static com.pancakeswap.nft.publish.util.GsonUtil.parseBody;
 import static com.pancakeswap.nft.publish.util.UrlUtil.getIpfsFormattedUrl;
 
-@Service
 @Slf4j
+@Service
 public class BunnyNFTService extends AbstractNFTService {
 
     @Value("${nft.bunny.collection.last.index}")
     private Integer lastIndex;
 
-    public BunnyNFTService(BlockChainService blockChainService, TokenDataService tokenDataService, ImageService imageService, DBService dbService) {
+    public BunnyNFTService(BlockChainService blockChainService,
+                           TokenDataService tokenDataService,
+                           ImageService imageService,
+                           DBService dbService) {
         super(imageService, dbService, tokenDataService, blockChainService);
     }
 

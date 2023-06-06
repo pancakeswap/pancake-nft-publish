@@ -30,7 +30,6 @@ public class MoboxTokenService {
     public void updateLevels(Collection collection) {
         String collectionAddress = collection.getAddress();
 
-        // TODO: consider using pagination
         String collectionId = collection.getId();
         List<Token> tokens = tokenRepository.findAllByParentCollection(new ObjectId(collectionId));
 
@@ -44,7 +43,6 @@ public class MoboxTokenService {
                     NftInfo nftInfo = blockChainService.getNftInfo(collectionAddress, new BigInteger(token.getTokenId()));
                     Attribute tokenLevelAttribute = levelAttributeFromDB.get();
                     String tokenLvlFromDB = tokenLevelAttribute.getValue();
-                    log.info(String.format("TMP: tokenLvlFromChain: %s, tokenLvlFromDB: %s", nftInfo.getLv().toString(), tokenLvlFromDB));
                     if (!tokenLvlFromDB.equals(nftInfo.getLv().toString())) {
                         dbService.storeTokenAttribute(tokenLevelAttribute, nftInfo.getLv().toString(), LEVEL_ATTRIBUTE);
                     }
