@@ -22,7 +22,6 @@ public class ListFailedTokens {
     private final CollectionRepository collectionRepository;
     private final CollectionInfoRepository collectionInfoRepository;
 
-
     @Scheduled(fixedDelay = 60, timeUnit = TimeUnit.MINUTES, initialDelay = 1)
     public void updateTokens() {
         log.info("updateTokens started");
