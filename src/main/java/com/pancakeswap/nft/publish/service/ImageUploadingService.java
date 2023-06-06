@@ -132,8 +132,8 @@ public class ImageUploadingService implements ImageService {
                         1000,
                         Scalr.OP_ANTIALIAS);
                 break;
-            } catch (Exception ignore) {
-                System.out.println(ignore);
+            } catch (Exception e) {
+                log.error(e.getMessage());
             }
         }
         if (original == null || resized == null) {

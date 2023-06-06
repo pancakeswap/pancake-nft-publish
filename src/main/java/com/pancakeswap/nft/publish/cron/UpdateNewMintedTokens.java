@@ -40,7 +40,6 @@ public class UpdateNewMintedTokens {
                     case ENUMERABLE -> {
                         BigInteger totalSupply = blockChainService.getTotalSupply(collection.getAddress());
                         if (totalSupply.intValue() > collection.getTotalSupply()) {
-                            System.out.println("Found new minted. Collection: " + collection.getAddress());
                             nftService.listNFT(config, from(collection, info), collection.getTotalSupply() - 1);
                             collection.setTotalSupply(totalSupply.intValue());
                             collectionRepository.save(collection);
