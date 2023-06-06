@@ -33,11 +33,19 @@ public class MoboxTokenService {
     public void updateLevels(Collection collection) {
         String collectionAddress = collection.getAddress();
         String collectionId = collection.getId();
+        ObjectId collectionObj = new ObjectId(collectionId);
 
         PageRequest pageRequest = PageRequest.ofSize(PAGE_SIZE);
-        Page<Token> tokens = tokenRepository.findAllByParentCollection(new ObjectId(collectionId), pageRequest);
+        Page<Token> onePage = tokenRepository.findAllByParentCollection(collectionObj, pageRequest);
+        while (!onePage.isLast()) {
+            pageRequest = pageRequest.next();
+            processPage(collectionAddress, onePage);
+            onePage = tokenRepository.findAllByParentCollection(collectionObj, pageRequest);
+        }
+    }
 
-        tokens.stream().forEach(token -> {
+    private void processPage(String collectionAddress, Page<Token> onePage) {
+        onePage.stream().forEach(token -> {
             List<String> attributesId = getAttributesId(token);
             Optional<Attribute> levelAttributeFromDB = attributeRepository.findFirstByIdInAndTraitType(attributesId, LEVEL_ATTRIBUTE);
             if (levelAttributeFromDB.isPresent()) {

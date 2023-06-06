@@ -50,20 +50,14 @@ public class CollectionController {
                     try {
                         FutureConfig config = FutureConfig.init();
                         nftService.storeAvatarAndBanner(config, dataDto.getAddress(), dataDto.getAvatarUrl(), dataDto.getBannerUrl());
-                        String result;
-                        switch (dataDto.getType()) {
-                            case ENUMERABLE:
-                                result = nftService.listNFT(config, dataDto, 0);
-                                break;
-                            case NO_ENUMERABLE:
-                                result = nftService.listNoEnumerableNFT(config, dataDto, dataDto.getStartIndex() != null ? dataDto.getStartIndex() : 0);
-                                break;
-                            case NO_ENUMERABLE_INFINITE:
-                                result = nftService.listNoEnumerableInfiniteNFT(config, dataDto, dataDto.getStartIndex() != null ? dataDto.getStartIndex() : 0);
-                                break;
-                            default:
-                                result = "CollectionType not found";
-                        }
+                        String result = switch (dataDto.getType()) {
+                            case ENUMERABLE -> nftService.listNFT(config, dataDto, 0);
+                            case NO_ENUMERABLE ->
+                                    nftService.listNoEnumerableNFT(config, dataDto, dataDto.getStartIndex() != null ? dataDto.getStartIndex() : 0);
+                            case NO_ENUMERABLE_INFINITE ->
+                                    nftService.listNoEnumerableInfiniteNFT(config, dataDto, dataDto.getStartIndex() != null ? dataDto.getStartIndex() : 0);
+                            default -> "CollectionType not found";
+                        };
                         return ResponseEntity.ok(result);
                     } catch (Exception ex) {
                         System.out.println(ex.getMessage());
