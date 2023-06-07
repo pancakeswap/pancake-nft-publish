@@ -33,7 +33,7 @@ public class NFTService extends AbstractNFTService {
 
     //TODO: Test on real data
     public String listNoEnumerableInfiniteNFT(FutureConfig config, CollectionDataDto dataDto, int startIndex) {
-        log.info("fetching tokens started");
+        log.info("Fetching tokens for collection: {} started", dataDto.getAddress());
 
         Collection collection = dbService.storeCollectionIfNotExist(dataDto, startIndex);
 
@@ -57,7 +57,7 @@ public class NFTService extends AbstractNFTService {
 
                 loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
             } catch (Exception e) {
-                log.error("failed to store token id: {}, url: {}, collectionId: {}. Error message: {}", i, url, collection.getId(), e.getMessage());
+                log.error("Failed to store token id: {}, url: {}, collectionId: {}. Error message: {}", i, url, collection.getId(), e.getMessage());
             }
             i++;
         }
@@ -67,7 +67,7 @@ public class NFTService extends AbstractNFTService {
     }
 
     public String listNoEnumerableNFT(FutureConfig config, CollectionDataDto dataDto, int startIndex) {
-        log.info("fetching tokens started");
+        log.info("Fetching tokens for collection: {} started", dataDto.getAddress());
 
         String collectionId = dbService.storeCollectionIfNotExist(dataDto, dataDto.getTotalSupply()).getId();
 
@@ -85,7 +85,7 @@ public class NFTService extends AbstractNFTService {
                 loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
             } catch (Exception e) {
                 config.addFailedTokenId(String.valueOf(i));
-                log.error("failed to store token id: {}, url: {}, collectionId: {}. Error message: {}", i, url, collectionId, e.getMessage());
+                log.error("Failed to store token id: {}, url: {}, collectionId: {}. Error message: {}", i, url, collectionId, e.getMessage());
             }
         }
 
@@ -94,7 +94,7 @@ public class NFTService extends AbstractNFTService {
     }
 
     public String listNFT(FutureConfig config, CollectionDataDto dataDto, int startIndex) throws ExecutionException, InterruptedException {
-        log.info("fetching tokens started");
+        log.info("Fetching tokens for collection: {} started", dataDto.getAddress());
 
         BigInteger totalSupply = blockChainService.getTotalSupply(dataDto.getAddress());
         String collectionId = dbService.storeCollectionIfNotExist(dataDto, totalSupply.intValue()).getId();
@@ -117,7 +117,7 @@ public class NFTService extends AbstractNFTService {
                 if (tokenId != null) {
                     config.addFailedTokenId(tokenId.toString());
                 }
-                log.error("failed to store token index: {}, id: {}, url: {}, collectionId: {}. Error message: {}", i, tokenId, url, collectionId, e.getMessage());
+                log.error("Failed to store token index: {}, id: {}, url: {}, collectionId: {}. Error message: {}", i, tokenId, url, collectionId, e.getMessage());
             }
         }
 
@@ -130,12 +130,12 @@ public class NFTService extends AbstractNFTService {
             if (!avatarUrl.isEmpty()) {
                 imageService.uploadAvatarImage(address, avatarUrl);
             } else {
-                log.info("avatar url is empty");
+                log.info("Avatar url is empty");
             }
             if (!bannerUrl.isEmpty()) {
                 imageService.uploadBannerImage(address, bannerUrl);
             } else {
-                log.info("banner url is empty");
+                log.info("Banner url is empty");
             }
         });
     }

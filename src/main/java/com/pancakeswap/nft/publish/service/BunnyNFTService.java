@@ -32,7 +32,7 @@ public class BunnyNFTService extends AbstractNFTService {
     }
 
     public void listOnlyOnePerBunnyID(String collectionAddress) throws ExecutionException, InterruptedException {
-        log.info("fetching tokens started");
+        log.info("Fetching tokens for collection: {} started", collectionAddress);
         int lastAddedBunnyId = 27;
 
         FutureConfig config = FutureConfig.init();
@@ -53,23 +53,22 @@ public class BunnyNFTService extends AbstractNFTService {
                 if (bunnyID.intValue() > lastAddedBunnyId) {
                     loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
                     lastAddedBunnyId = bunnyID.intValue();
-                    log.info("added new bunny. id: {}", bunnyID.intValue());
                 }
             } catch (Exception e) {
                 if (tokenId != null) {
                     config.addFailedTokenId(tokenId.toString());
                 }
-                log.error("failed to store token index: {}, id: {}, collectionId: {}", i, tokenId, collection.getId(), e);
+                log.error("Failed to store token index: {}, id: {}, collectionId: {}", i, tokenId, collection.getId(), e);
             }
         }
 
         waitFutureRequestFinished(config);
-        log.info("fetching tokens finished. LastIndex - {}, lastAddedBunnyId - {}", totalSupply.intValue() - 1, lastAddedBunnyId);
+        log.info("Fetching tokens for collection: {} finished. LastIndex - {}, lastAddedBunnyId - {}",
+                collectionAddress, totalSupply.intValue() - 1, lastAddedBunnyId);
     }
 
+    @Deprecated
     public void listNFT(CollectionDataDto dataDto) throws ExecutionException, InterruptedException {
-        log.info("fetching tokens started");
-
         FutureConfig config = FutureConfig.init();
 
         BigInteger totalSupply = blockChainService.getTotalSupply(dataDto.getAddress());
@@ -88,17 +87,15 @@ public class BunnyNFTService extends AbstractNFTService {
                 if (tokenId != null) {
                     config.addFailedTokenId(tokenId.toString());
                 }
-                log.error("failed to store token index: {}, id: {}, collectionId: {}", i, tokenId, collection.getId(), e);
+                log.error("Failed to store token index: {}, id: {}, collectionId: {}", i, tokenId, collection.getId(), e);
             }
         }
 
         waitFutureRequestFinished(config);
-        log.info("fetching tokens finished. LastIndex - {}", totalSupply.intValue() - 1);
     }
 
+    @Deprecated
     public void relistNftByIndex(String collectionAddress, List<Integer> tokenIds) {
-        log.info("fetching tokens started");
-
         FutureConfig config = FutureConfig.init();
 
         Collection collection = dbService.getCollection(collectionAddress);
@@ -117,11 +114,10 @@ public class BunnyNFTService extends AbstractNFTService {
 
                 loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
             } catch (Exception e) {
-                log.error("failed to store token id: {}, url: {}, collectionId: {}", tokenId, url, collection.getId(), e);
+                log.error("Failed to store token id: {}, url: {}, collectionId: {}", tokenId, url, collection.getId(), e);
             }
         });
         waitFutureRequestFinished(config);
-        log.info("fetching tokens finished");
     }
 
     @Override

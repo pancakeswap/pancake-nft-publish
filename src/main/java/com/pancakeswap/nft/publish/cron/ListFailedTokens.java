@@ -24,14 +24,13 @@ public class ListFailedTokens {
 
     @Scheduled(fixedDelay = 60, timeUnit = TimeUnit.MINUTES, initialDelay = 1)
     public void updateTokens() {
-        log.info("updateTokens started");
         for (Collection collection : collectionRepository.findAll()) {
             CollectionInfo info = collectionInfoRepository.findByCollectionId(new ObjectId(collection.getId()));
             if (info != null && info.getFailedIds() != null) {
                 String[] ids = info.getFailedIds().split(",");
                 nftService.relistNft(collection.getAddress(), ids);
+                log.info("Updated failed tokens for collection: {}", collection.getAddress());
             }
         }
-        log.info("updateTokens ended");
     }
 }

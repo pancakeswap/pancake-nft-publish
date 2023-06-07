@@ -26,12 +26,8 @@ public abstract class AbstractNFTService {
 
     private final Map<String, String> tokenResponse = Collections.synchronizedMap(new HashMap<>());
 
-
     public void relistNft(String collectionAddress, String[] tokenIds) {
-        log.info("fetching tokens started");
-
         FutureConfig config = FutureConfig.init();
-
         String collectionId = dbService.getCollection(collectionAddress).getId();
 
         Arrays.asList(tokenIds).forEach(tokenId -> {
@@ -40,7 +36,7 @@ public abstract class AbstractNFTService {
                 params.setTokenId(tokenId);
                 loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
             } catch (Exception e) {
-                log.error("failed to store token id: {}, collectionId: {}. Error: {}", tokenId, collectionId, e.getMessage());
+                log.error("Failed to store token id: {}, collectionId: {}. Error: {}", tokenId, collectionId, e.getMessage());
             }
         });
         postListActions(config, collectionId);
@@ -74,7 +70,7 @@ public abstract class AbstractNFTService {
                 }
             } catch (Exception ex) {
                 config.addFailedTokenId(params.getTokenId());
-                log.error("failed to store token index: {}, id: {}, collectionId: {}", params.getTokenId(), params.getCollectionId(), ex.getMessage());
+                log.debug("Failed to store token index: {}, id: {}, collectionId: {}", params.getTokenId(), params.getCollectionId(), ex.getMessage());
             }
         });
     }
@@ -91,7 +87,7 @@ public abstract class AbstractNFTService {
 
     protected String postListActions(FutureConfig config, String collectionId) {
         waitFutureRequestFinished(config);
-        log.info("fetching tokens finished");
+        log.info("Fetching tokens finished");
 
         if (!config.getTokenIdsFailed().isEmpty()) {
             String failedIds = config.getTokenIdsFailed().stream().sorted(Comparator.comparing(Integer::valueOf)).collect(Collectors.joining(","));

@@ -65,7 +65,7 @@ public class ImageUploadingService implements ImageService {
             BufferedImage original = ImageIO.read(new URL(imageUrl));
             uploadSync(original, "avatar.png", collectionAddress, TokenMetadata.PNG);
         } catch (IOException ignore) {
-            log.error("failed to upload image avatar. url: {}", imageUrl);
+            log.error("Failed to upload image avatar. url: {}", imageUrl);
         }
     }
 
@@ -77,7 +77,7 @@ public class ImageUploadingService implements ImageService {
             uploadSync(original, "banner-lg.png", collectionAddress, TokenMetadata.PNG);
             uploadSync(original, "banner-sm.png", collectionAddress, TokenMetadata.PNG);
         } catch (IOException ignore) {
-            log.error("failed to upload image banner. url: {}", imageUrl);
+            log.error("Failed to upload image banner. url: {}", imageUrl);
         }
     }
 
@@ -98,7 +98,7 @@ public class ImageUploadingService implements ImageService {
             }
             if (attempts == i) {
                 tokenIdsFailed.add(tokenData.getTokenId());
-                log.error("failed to upload {}. url: {}, formattedTokenName: {}", metadata, imageUrl, tokenName);
+                log.error("Failed to upload {}. url: {}, formattedTokenName: {}", metadata, imageUrl, tokenName);
             }
         }
     }

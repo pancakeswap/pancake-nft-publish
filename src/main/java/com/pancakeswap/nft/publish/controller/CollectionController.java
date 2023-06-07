@@ -56,7 +56,6 @@ public class CollectionController {
                                     nftService.listNoEnumerableNFT(config, dataDto, dataDto.getStartIndex() != null ? dataDto.getStartIndex() : 0);
                             case NO_ENUMERABLE_INFINITE ->
                                     nftService.listNoEnumerableInfiniteNFT(config, dataDto, dataDto.getStartIndex() != null ? dataDto.getStartIndex() : 0);
-                            default -> "CollectionType not found";
                         };
                         return ResponseEntity.ok(result);
                     } catch (Exception ex) {

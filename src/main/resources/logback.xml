@@ -1,0 +1,19 @@
+<configuration>
+    <appender name="standardAppender" class="ch.qos.logback.core.ConsoleAppender">
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <pattern>%d %green([%thread]) %highlight(%level) %logger{50} - %msg%n</pattern>
+        </layout>
+    </appender>
+    <root level="info">
+        <appender-ref ref="standardAppender"/>
+    </root>
+
+    <appender name="jsonConsoleAppender" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdc>true</includeMdc>
+        </encoder>
+    </appender>
+    <logger name="com.pancakeswap.nft.publish" level="info">
+        <appender-ref ref="jsonConsoleAppender"/>
+    </logger>
+</configuration>
