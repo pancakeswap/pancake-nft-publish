@@ -30,9 +30,7 @@ public class UpdateNewMintedTokens {
 
     @Scheduled(fixedDelay = 60, initialDelay = 30, timeUnit = TimeUnit.MINUTES)
     public void updateCollections() throws ExecutionException, InterruptedException {
-        log.info("updateCollections started");
         for (Collection collection : collectionRepository.findAll()) {
-            log.info(collection.getAddress());
             CollectionInfo info = collectionInfoRepository.findByCollectionId(new ObjectId(collection.getId()));
             if (info != null && info.getIsCron()) {
                 FutureConfig config = FutureConfig.init();
@@ -40,7 +38,6 @@ public class UpdateNewMintedTokens {
                     case ENUMERABLE -> {
                         BigInteger totalSupply = blockChainService.getTotalSupply(collection.getAddress());
                         if (totalSupply.intValue() > collection.getTotalSupply()) {
-                            System.out.println("Found new minted. Collection: " + collection.getAddress());
                             nftService.listNFT(config, from(collection, info), collection.getTotalSupply() - 1);
                             collection.setTotalSupply(totalSupply.intValue());
                             collectionRepository.save(collection);
@@ -49,9 +46,9 @@ public class UpdateNewMintedTokens {
                     case NO_ENUMERABLE_INFINITE ->
                             nftService.listNoEnumerableInfiniteNFT(config, from(collection, info), collection.getTotalSupply());
                 }
+                log.info("New minted tokens for collection {} has been updated", collection.getAddress());
             }
         }
-        log.info("updateCollections ended");
     }
 
     private CollectionDataDto from(Collection collection, CollectionInfo collectionInfo) {

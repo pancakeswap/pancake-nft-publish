@@ -1,6 +1,5 @@
 package com.pancakeswap.nft.publish.cron;
 
-import com.pancakeswap.nft.publish.exception.ListingException;
 import com.pancakeswap.nft.publish.model.entity.Collection;
 import com.pancakeswap.nft.publish.service.DBService;
 import com.pancakeswap.nft.publish.service.MoboxTokenService;
@@ -25,12 +24,10 @@ public class UpdateMoboxTokenLvl {
         Collection moboxCollection = dbService.getCollection(MOBOX_COLLECTION_ADDRESS);
         if (moboxCollection != null) {
             try {
-                log.info("Mobox tokens lvl update started");
                 moboxTokenService.updateLevels(moboxCollection);
-                log.info("Mobox tokens lvl update ended");
+                log.info("Mobox tokens lvl updated");
             } catch (Exception ex) {
-                log.error(ex.getMessage());
-                throw new ListingException("Failed to update Mobox tokens lvl");
+                log.error("Failed to update Mobox tokens lvl, due to: {}", ex.getMessage());
             }
         }
     }

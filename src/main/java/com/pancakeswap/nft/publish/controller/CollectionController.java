@@ -56,11 +56,9 @@ public class CollectionController {
                                     nftService.listNoEnumerableNFT(config, dataDto, dataDto.getStartIndex() != null ? dataDto.getStartIndex() : 0);
                             case NO_ENUMERABLE_INFINITE ->
                                     nftService.listNoEnumerableInfiniteNFT(config, dataDto, dataDto.getStartIndex() != null ? dataDto.getStartIndex() : 0);
-                            default -> "CollectionType not found";
                         };
                         return ResponseEntity.ok(result);
                     } catch (Exception ex) {
-                        System.out.println(ex.getMessage());
                         throw new ListingException("Failed to list collection");
                     }
                 } else {
@@ -83,7 +81,6 @@ public class CollectionController {
                         bunnyNftService.listOnlyOnePerBunnyID(address);
                         return ResponseEntity.ok("ListOnlyOnePerBunnyID finished");
                     } catch (Exception ex) {
-                        System.out.println(ex.getMessage());
                         throw new ListingException("Failed to list collection");
                     }
                 } else {
