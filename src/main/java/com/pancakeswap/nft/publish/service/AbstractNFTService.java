@@ -1,6 +1,8 @@
 package com.pancakeswap.nft.publish.service;
 
 import com.pancakeswap.nft.publish.config.FutureConfig;
+import com.pancakeswap.nft.publish.exception.ListingException;
+import com.pancakeswap.nft.publish.service.cache.CacheService;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -9,9 +11,11 @@ import lombok.extern.slf4j.Slf4j;
 import java.math.BigInteger;
 import java.net.http.HttpResponse;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static com.pancakeswap.nft.publish.model.dto.response.CollectionListingFailedResponse.*;
 import static com.pancakeswap.nft.publish.util.FutureUtils.waitFutureRequestFinished;
 import static com.pancakeswap.nft.publish.util.UrlUtil.getIpfsFormattedUrl;
 
@@ -23,6 +27,7 @@ public abstract class AbstractNFTService {
     protected final DBService dbService;
     protected final TokenDataService tokenDataService;
     protected final BlockChainService blockChainService;
+    protected final CacheService cacheService;
 
     private final Map<String, String> tokenResponse = Collections.synchronizedMap(new HashMap<>());
 
@@ -40,6 +45,22 @@ public abstract class AbstractNFTService {
             }
         });
         postListActions(config, collectionId);
+    }
+
+    public CompletableFuture<Boolean> isListingPossible(String collectionAddress) {
+        switch (cacheService.add(collectionAddress)) {
+            case PROCESSING -> {
+                if (dbService.getCollection(collectionAddress) == null) {
+                    return CompletableFuture.completedFuture(true);
+                } else {
+                    throw new ListingException(COLLECTION_ALREADY_EXIST.getMessage());
+                }
+            }
+            case MAX_CACHE_SIZE_REACHED ->
+                    throw new ListingException(REACHED_MAX_AMOUNT_OF_CONCURRENT_PROCESSING.getMessage());
+            case ALREADY_CACHED -> throw new ListingException(COLLECTION_PROCESSING_ALREADY_IN_PROGRESS.getMessage());
+        }
+        return CompletableFuture.completedFuture(false);
     }
 
     protected abstract void loadAndStoreTokenData(FutureConfig config, String body, ListCollectionTokenParams params);
@@ -75,7 +96,7 @@ public abstract class AbstractNFTService {
         });
     }
 
-    protected void loadAndStoreTokenDataAsyncNextAttempt(FutureConfig config, ListCollectionTokenParams params, AtomicInteger attempt, String failReason) {
+    private void loadAndStoreTokenDataAsyncNextAttempt(FutureConfig config, ListCollectionTokenParams params, AtomicInteger attempt, String failReason) {
         int attemptValue = attempt.incrementAndGet();
         if (attemptValue < 10) {
             loadAndStoreTokenDataAsync(config, params, attempt);
@@ -85,17 +106,15 @@ public abstract class AbstractNFTService {
         }
     }
 
-    protected String postListActions(FutureConfig config, String collectionId) {
+    protected void postListActions(FutureConfig config, String collectionId) {
         waitFutureRequestFinished(config);
         log.info("Fetching tokens finished");
 
         if (!config.getTokenIdsFailed().isEmpty()) {
             String failedIds = config.getTokenIdsFailed().stream().sorted(Comparator.comparing(Integer::valueOf)).collect(Collectors.joining(","));
             dbService.storeFailedIds(collectionId, failedIds);
-            return "List of failed tokens IDs:" + failedIds;
+            log.debug("List of failed tokens IDs: {}", failedIds);
         }
-
-        return null;
     }
 
     @Getter

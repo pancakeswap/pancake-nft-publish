@@ -1,15 +1,19 @@
 package com.pancakeswap.nft.publish.service;
 
 import com.pancakeswap.nft.publish.config.FutureConfig;
+import com.pancakeswap.nft.publish.exception.ListingException;
 import com.pancakeswap.nft.publish.model.dto.AbstractTokenDto;
 import com.pancakeswap.nft.publish.model.dto.collection.CollectionDataDto;
 import com.pancakeswap.nft.publish.model.entity.Collection;
+import com.pancakeswap.nft.publish.service.cache.CacheService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -24,14 +28,25 @@ public class BunnyNFTService extends AbstractNFTService {
     @Value("${nft.bunny.collection.last.index}")
     private Integer lastIndex;
 
-    public BunnyNFTService(BlockChainService blockChainService,
-                           TokenDataService tokenDataService,
-                           ImageService imageService,
-                           DBService dbService) {
-        super(imageService, dbService, tokenDataService, blockChainService);
+    public BunnyNFTService(
+            BlockChainService blockChainService,
+            TokenDataService tokenDataService,
+            ImageService imageService,
+            DBService dbService, CacheService cacheService) {
+        super(imageService, dbService, tokenDataService, blockChainService, cacheService);
     }
 
-    public void listOnlyOnePerBunnyID(String collectionAddress) throws ExecutionException, InterruptedException {
+    @Async
+    public void listNFTs(String collectionAddress) {
+        try {
+            listOnlyOnePerBunnyId(collectionAddress).thenRun(() -> cacheService.remove(collectionAddress));
+        } catch (ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Async
+    protected CompletableFuture<Boolean> listOnlyOnePerBunnyId(String collectionAddress) throws ExecutionException, InterruptedException {
         log.info("Fetching tokens for collection: {} started", collectionAddress);
         int lastAddedBunnyId = 27;
 
@@ -39,7 +54,6 @@ public class BunnyNFTService extends AbstractNFTService {
 
         BigInteger totalSupply = blockChainService.getTotalSupply(collectionAddress);
         Collection collection = dbService.getCollection(collectionAddress);
-
 
         for (int i = lastIndex; i < totalSupply.intValue(); i++) {
             BigInteger tokenId = null;
@@ -65,6 +79,7 @@ public class BunnyNFTService extends AbstractNFTService {
         waitFutureRequestFinished(config);
         log.info("Fetching tokens for collection: {} finished. LastIndex - {}, lastAddedBunnyId - {}",
                 collectionAddress, totalSupply.intValue() - 1, lastAddedBunnyId);
+        return CompletableFuture.completedFuture(true);
     }
 
     @Deprecated
@@ -132,7 +147,7 @@ public class BunnyNFTService extends AbstractNFTService {
         }
     }
 
-    protected void storeBunnyTokenData(FutureConfig config, String collectionId, AbstractTokenDto tokenData) {
+    private void storeBunnyTokenData(FutureConfig config, String collectionId, AbstractTokenDto tokenData) {
         config.addFuture(
                 () -> {
                     try {
