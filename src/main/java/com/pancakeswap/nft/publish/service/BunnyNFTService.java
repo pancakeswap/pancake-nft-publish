@@ -143,7 +143,7 @@ public class BunnyNFTService extends AbstractNFTService {
             storeBunnyTokenData(config, params.getCollectionId(), tokenData);
         } catch (Exception ex) {
             config.addFailedTokenId(params.getTokenId());
-            log.error("Can parse and store token data from: {}. Token id: {}. Error message: {}", params.getTokenUrl(), params.getTokenId(), ex.getMessage());
+            log.error("Can't parse and store token data from: {}. Token id: {}. Error message: {}", params.getTokenUrl(), params.getTokenId(), ex.getMessage());
         }
     }
 

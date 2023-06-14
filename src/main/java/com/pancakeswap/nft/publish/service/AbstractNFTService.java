@@ -102,13 +102,13 @@ public abstract class AbstractNFTService {
             loadAndStoreTokenDataAsync(config, params, attempt);
         } else {
             config.addFailedTokenId(params.getTokenId());
-            log.error("Can not fetch token data from: {}. Token id: {}. Attempt: {}. Error message: {}", params.getTokenUrl(), params.getTokenId(), attemptValue, failReason);
+            log.error("Can't fetch token data from: {}. Token id: {}. Attempt: {}. Error message: {}", params.getTokenUrl(), params.getTokenId(), attemptValue, failReason);
         }
     }
 
     protected void postListActions(FutureConfig config, String collectionId) {
         waitFutureRequestFinished(config);
-        log.info("Fetching tokens finished");
+        log.info("Fetching tokens for collection: {} finished", collectionId);
 
         if (!config.getTokenIdsFailed().isEmpty()) {
             String failedIds = config.getTokenIdsFailed().stream().sorted(Comparator.comparing(Integer::valueOf)).collect(Collectors.joining(","));
