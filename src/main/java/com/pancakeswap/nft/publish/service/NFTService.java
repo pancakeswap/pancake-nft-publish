@@ -1,38 +1,63 @@
 package com.pancakeswap.nft.publish.service;
 
 import com.pancakeswap.nft.publish.config.FutureConfig;
+import com.pancakeswap.nft.publish.exception.ListingException;
 import com.pancakeswap.nft.publish.model.dto.AbstractTokenDto;
 import com.pancakeswap.nft.publish.model.dto.collection.CollectionDataDto;
 import com.pancakeswap.nft.publish.model.entity.Collection;
+import com.pancakeswap.nft.publish.service.cache.CacheService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.math.BigInteger;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.pancakeswap.nft.publish.util.GsonUtil.parseBody;
 import static com.pancakeswap.nft.publish.util.UrlUtil.getIpfsFormattedUrl;
 
-@Service
 @Slf4j
+@Service
 public class NFTService extends AbstractNFTService {
 
     public NFTService(
             BlockChainService blockChainService,
             TokenDataService tokenDataService,
             ImageService imageService,
-            DBService dbService) {
-        super(
-                imageService,
-                dbService,
-                tokenDataService,
-                blockChainService);
+            DBService dbService,
+            CacheService cacheService) {
+        super(imageService, dbService, tokenDataService, blockChainService, cacheService);
     }
 
-    //TODO: Test on real data
-    public String listNoEnumerableInfiniteNFT(FutureConfig config, CollectionDataDto dataDto, int startIndex) {
+    @Async
+    public void listNFTs(CollectionDataDto dataDto) {
+        String address = dataDto.getAddress();
+        try {
+            list(dataDto).thenRun(() -> cacheService.remove(address));
+        } catch (ExecutionException | InterruptedException e) {
+            cacheService.remove(address);
+            throw new ListingException(e.getMessage(), e);
+        }
+    }
+
+    @Async
+    protected CompletableFuture<Boolean> list(CollectionDataDto dataDto) throws ExecutionException, InterruptedException {
+        FutureConfig config = FutureConfig.init();
+        storeAvatarAndBanner(config, dataDto.getAddress(), dataDto.getAvatarUrl(), dataDto.getBannerUrl());
+        switch (dataDto.getType()) {
+            case ENUMERABLE -> listNFT(config, dataDto, 0);
+            case NO_ENUMERABLE ->
+                    listNoEnumerableNFT(config, dataDto, dataDto.getStartIndex() != null ? dataDto.getStartIndex() : 0);
+            case NO_ENUMERABLE_INFINITE ->
+                    listNoEnumerableInfiniteNFT(config, dataDto, dataDto.getStartIndex() != null ? dataDto.getStartIndex() : 0);
+        }
+        return CompletableFuture.completedFuture(true);
+    }
+
+    public void listNoEnumerableInfiniteNFT(FutureConfig config, CollectionDataDto dataDto, int startIndex) {
         log.info("Fetching tokens for collection: {} started", dataDto.getAddress());
 
         Collection collection = dbService.storeCollectionIfNotExist(dataDto, startIndex);
@@ -61,39 +86,10 @@ public class NFTService extends AbstractNFTService {
             }
             i++;
         }
-
-        String postList = postListActions(config, collection.getId());
-        return postList != null ? postList : "Listed";
+        postListActions(config, collection.getId());
     }
 
-    public String listNoEnumerableNFT(FutureConfig config, CollectionDataDto dataDto, int startIndex) {
-        log.info("Fetching tokens for collection: {} started", dataDto.getAddress());
-
-        String collectionId = dbService.storeCollectionIfNotExist(dataDto, dataDto.getTotalSupply()).getId();
-
-        for (int i = startIndex; i < dataDto.getTotalSupply() + startIndex; i++) {
-            String url = null;
-            try {
-                url = getIpfsFormattedUrl(blockChainService.getTokenURI(dataDto.getAddress(), BigInteger.valueOf(i)));
-
-                ListCollectionTokenParams params = new ListCollectionTokenParams(collectionId, dataDto.getAddress());
-                params.setIsModifiedTokenName(dataDto.getIsModifiedTokenName());
-                params.setOnlyGif(dataDto.getOnlyGif());
-                params.setTokenId(String.valueOf(i));
-                params.setTokenUrl(url);
-
-                loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
-            } catch (Exception e) {
-                config.addFailedTokenId(String.valueOf(i));
-                log.error("Failed to store token id: {}, url: {}, collectionId: {}. Error message: {}", i, url, collectionId, e.getMessage());
-            }
-        }
-
-        String postList = postListActions(config, collectionId);
-        return postList != null ? postList : "Listed";
-    }
-
-    public String listNFT(FutureConfig config, CollectionDataDto dataDto, int startIndex) throws ExecutionException, InterruptedException {
+    public void listNFT(FutureConfig config, CollectionDataDto dataDto, int startIndex) throws ExecutionException, InterruptedException {
         log.info("Fetching tokens for collection: {} started", dataDto.getAddress());
 
         BigInteger totalSupply = blockChainService.getTotalSupply(dataDto.getAddress());
@@ -121,11 +117,45 @@ public class NFTService extends AbstractNFTService {
             }
         }
 
-        String postList = postListActions(config, collectionId);
-        return postList != null ? postList : "Listed";
+        postListActions(config, collectionId);
     }
 
-    public void storeAvatarAndBanner(FutureConfig config, String address, String avatarUrl, String bannerUrl) {
+    public boolean deleteCollection(String collectionId) {
+        try {
+            dbService.deleteCollection(collectionId);
+            return true;
+        } catch (Exception ex) {
+            throw new ListingException(ex.getMessage());
+        }
+    }
+
+    private void listNoEnumerableNFT(FutureConfig config, CollectionDataDto dataDto, int startIndex) {
+        log.info("Fetching tokens for collection: {} started", dataDto.getAddress());
+
+        String collectionId = dbService.storeCollectionIfNotExist(dataDto, dataDto.getTotalSupply()).getId();
+
+        for (int i = startIndex; i < dataDto.getTotalSupply() + startIndex; i++) {
+            String url = null;
+            try {
+                url = getIpfsFormattedUrl(blockChainService.getTokenURI(dataDto.getAddress(), BigInteger.valueOf(i)));
+
+                ListCollectionTokenParams params = new ListCollectionTokenParams(collectionId, dataDto.getAddress());
+                params.setIsModifiedTokenName(dataDto.getIsModifiedTokenName());
+                params.setOnlyGif(dataDto.getOnlyGif());
+                params.setTokenId(String.valueOf(i));
+                params.setTokenUrl(url);
+
+                loadAndStoreTokenDataAsync(config, params, new AtomicInteger(0));
+            } catch (Exception e) {
+                config.addFailedTokenId(String.valueOf(i));
+                log.error("Failed to store token id: {}, url: {}, collectionId: {}. Error message: {}", i, url, collectionId, e.getMessage());
+            }
+        }
+
+        postListActions(config, collectionId);
+    }
+
+    private void storeAvatarAndBanner(FutureConfig config, String address, String avatarUrl, String bannerUrl) {
         config.addFuture(() -> {
             if (!avatarUrl.isEmpty()) {
                 imageService.uploadAvatarImage(address, avatarUrl);
@@ -141,7 +171,7 @@ public class NFTService extends AbstractNFTService {
     }
 
     //If token 'imagePng' exist we assume that 'image' contain gif
-    protected void storeTokenImage(FutureConfig config, AbstractTokenDto tokenData, String collectionAddress, boolean onlyGif) {
+    private void storeTokenImage(FutureConfig config, AbstractTokenDto tokenData, String collectionAddress, boolean onlyGif) {
         config.addFuture(() -> {
             if (onlyGif) {
                 imageService.s3UploadTokenImagesAsync(collectionAddress, tokenData.getImage(), tokenData, config.getTokenIdsFailed(), TokenMetadata.GIF);
