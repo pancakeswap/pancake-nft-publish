@@ -194,14 +194,14 @@ public class NFTService extends AbstractNFTService {
         try {
             AbstractTokenDto tokenData = parseBody(body);
             tokenData.setTokenId(params.getTokenId());
-            if (params.getIsModifiedTokenName()) {
+            if (params.getIsModifiedTokenName() != null && params.getIsModifiedTokenName()) {
                 tokenData.setName(String.format("%s %s", tokenData.getName(), params.getTokenId()));
             }
             storeTokenImage(config, tokenData, params.getCollectionAddress(), params.getOnlyGif());
             storeTokenData(config, params.getCollectionId(), tokenData);
         } catch (Exception ex) {
             config.addFailedTokenId(params.getTokenId());
-            log.error("Can parse and store token data from: {}. Token id: {}. Error message: {}", params.getTokenUrl(), params.getTokenId(), ex.getMessage());
+            log.error("Can't parse and store token data from: {}. Token id: {}. Error message: {}", params.getTokenUrl(), params.getTokenId(), ex.getMessage());
         }
     }
 
