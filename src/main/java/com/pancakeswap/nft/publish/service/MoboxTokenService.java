@@ -37,10 +37,15 @@ public class MoboxTokenService {
 
         PageRequest pageRequest = PageRequest.ofSize(PAGE_SIZE);
         Page<Token> onePage = tokenRepository.findAllByParentCollection(collectionObj, pageRequest);
-        while (!onePage.isLast()) {
+        processPage(collectionAddress, onePage);
+
+        boolean allFetched = onePage.getTotalElements() < PAGE_SIZE;
+        while (!allFetched) {
             pageRequest = pageRequest.next();
-            processPage(collectionAddress, onePage);
             onePage = tokenRepository.findAllByParentCollection(collectionObj, pageRequest);
+            allFetched = onePage.getTotalElements() < PAGE_SIZE;
+
+            processPage(collectionAddress, onePage);
         }
     }
 
