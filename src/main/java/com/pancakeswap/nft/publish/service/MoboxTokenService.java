@@ -14,6 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.math.BigInteger;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -49,17 +50,20 @@ public class MoboxTokenService {
         }
     }
 
-    private void processPage(String collectionAddress, Page<Token> onePage) {
+    public void processPage(String collectionAddress, Page<Token> onePage) {
         onePage.stream().forEach(token -> {
             List<String> attributesId = getAttributesId(token);
             Optional<Attribute> levelAttributeFromDB = attributeRepository.findFirstByIdInAndTraitType(attributesId, LEVEL_ATTRIBUTE);
             if (levelAttributeFromDB.isPresent()) {
                 try {
                     NftInfo nftInfo = blockChainService.getNftInfo(collectionAddress, new BigInteger(token.getTokenId()));
-                    String tokenLvlFromDB = levelAttributeFromDB.get().getValue();
+                    Attribute lvlAttribute = levelAttributeFromDB.get();
+                    String tokenLvlFromDB = lvlAttribute.getValue();
                     String tokenLvlFromChain = nftInfo.getLv().toString();
                     if (!tokenLvlFromDB.equals(tokenLvlFromChain)) {
-                        dbService.storeTokenAttribute(levelAttributeFromDB.get(), tokenLvlFromChain, LEVEL_ATTRIBUTE);
+                        lvlAttribute.setValue(tokenLvlFromChain);
+                        lvlAttribute.setUpdatedAt(new Date());
+                        attributeRepository.save(lvlAttribute);
                     }
                 } catch (Exception e) {
                     throw new RuntimeException(e);
