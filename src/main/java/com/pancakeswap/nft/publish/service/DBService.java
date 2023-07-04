@@ -206,17 +206,4 @@ public class DBService {
 
         return metadataRepository.save(metadata);
     }
-
-    @Transactional
-    public void storeTokenAttribute(Attribute attributeToSave, String value, String traitType) {
-        Attribute attribute = new Attribute();
-        attribute.setParentCollection(attributeToSave.getParentCollection());
-        attribute.setTraitType(traitType);
-        attribute.setValue(value);
-
-        attribute.setCreatedAt(new Date());
-        attribute.setUpdatedAt(new Date());
-
-        attributeRepository.save(attribute);
-    }
 }
