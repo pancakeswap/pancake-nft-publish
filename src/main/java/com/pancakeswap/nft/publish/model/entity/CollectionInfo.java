@@ -34,6 +34,7 @@ public class CollectionInfo {
     @NotNull
     private Boolean isCron;
     private String failedIds;
+    private Integer lastTokenId;
 
     @Field("created_at")
     @CreatedDate

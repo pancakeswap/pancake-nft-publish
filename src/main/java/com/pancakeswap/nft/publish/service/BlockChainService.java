@@ -107,6 +107,20 @@ public class BlockChainService {
                 (BigInteger) response.get(2).getValue());
     }
 
+    public BigInteger getLastTokenId(String collectionAddress) throws ExecutionException, InterruptedException {
+        Function function = new Function(
+                "lastTokenId",
+                Collections.emptyList(),
+                List.of(new TypeReference<Uint>() {
+                }));
+
+        List<Type> res = callBlockchainFunction(collectionAddress, function);
+        if (res.isEmpty()) {
+            throw new RuntimeException("Decoded response is empty");
+        }
+        return (BigInteger) res.get(0).getValue();
+    }
+
     private List<Type> callBlockchainFunction(String collectionAddress, Function function) throws ExecutionException, InterruptedException {
         String encodedFunction = FunctionEncoder.encode(function);
         EthCall response = web3j.ethCall(

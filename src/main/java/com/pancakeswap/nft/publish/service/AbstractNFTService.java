@@ -2,10 +2,9 @@ package com.pancakeswap.nft.publish.service;
 
 import com.pancakeswap.nft.publish.config.FutureConfig;
 import com.pancakeswap.nft.publish.exception.ListingException;
+import com.pancakeswap.nft.publish.model.dto.collection.ListCollectionTokenParams;
 import com.pancakeswap.nft.publish.service.cache.CacheService;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigInteger;
@@ -65,7 +64,7 @@ public abstract class AbstractNFTService {
 
     protected abstract void loadAndStoreTokenData(FutureConfig config, String body, ListCollectionTokenParams params);
 
-    protected void loadAndStoreTokenDataAsync(FutureConfig config, ListCollectionTokenParams params, AtomicInteger attempt) {
+    public void loadAndStoreTokenDataAsync(FutureConfig config, ListCollectionTokenParams params, AtomicInteger attempt) {
         config.addFuture(() -> {
             try {
                 String url = params.getTokenUrl();
@@ -106,7 +105,7 @@ public abstract class AbstractNFTService {
         }
     }
 
-    protected void postListActions(FutureConfig config, String collectionId) {
+    public void postListActions(FutureConfig config, String collectionId) {
         waitFutureRequestFinished(config);
         log.info("Fetching tokens for collection: {} finished", collectionId);
 
@@ -115,17 +114,5 @@ public abstract class AbstractNFTService {
             dbService.storeFailedIds(collectionId, failedIds);
             log.debug("List of failed tokens IDs: {}", failedIds);
         }
-    }
-
-    @Getter
-    @Setter
-    @RequiredArgsConstructor
-    static class ListCollectionTokenParams {
-        private final String collectionId;
-        private final String collectionAddress;
-        private String tokenId;
-        private String tokenUrl;
-        private Boolean onlyGif;
-        private Boolean isModifiedTokenName;
     }
 }
