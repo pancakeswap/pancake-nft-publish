@@ -16,6 +16,7 @@ import org.web3j.protocol.core.methods.request.Transaction;
 import org.web3j.protocol.core.methods.response.EthCall;
 import org.web3j.protocol.http.HttpService;
 
+import javax.annotation.PostConstruct;
 import java.math.BigInteger;
 import java.util.Collections;
 import java.util.List;
@@ -26,10 +27,16 @@ public class BlockChainService {
 
     @Value("${wallet.address}")
     private String walletAddress;
-    private final Web3j web3j;
+    @Value("${node.url}")
+    private String nodeUrl;
+    private Web3j web3j;
 
     public BlockChainService() {
-        this.web3j = Web3j.build(new HttpService("https://bsc-dataseed1.binance.org:443"));
+    }
+
+    @PostConstruct
+    public void afterInit() {
+        this.web3j = Web3j.build(new HttpService(nodeUrl));
     }
 
     public BigInteger getTotalSupply(String collectionAddress) throws ExecutionException, InterruptedException {

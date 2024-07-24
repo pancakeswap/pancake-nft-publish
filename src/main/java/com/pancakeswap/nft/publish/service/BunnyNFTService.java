@@ -55,6 +55,9 @@ public class BunnyNFTService extends AbstractNFTService {
         BigInteger totalSupply = blockChainService.getTotalSupply(collectionAddress);
         Collection collection = dbService.getCollection(collectionAddress);
 
+        log.info("Collection: {}. totalSupply - {}, lastAddedBunnyId - {}, lastIndex - {}",
+                collection.getId(), totalSupply.intValue(), lastAddedBunnyId, lastIndex);
+
         for (int i = lastIndex; i < totalSupply.intValue(); i++) {
             BigInteger tokenId = null;
             BigInteger bunnyID;
